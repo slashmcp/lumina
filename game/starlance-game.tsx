@@ -1,9 +1,10 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, ChevronDown, CircleHelp, Fuel, Gauge, Gem, MessageCircle, Mountain, Package, Pickaxe, Radio, Rocket, Shield, Sparkles, Sun, X } from 'lucide-react'
+import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, ChevronDown, CircleHelp, Compass, Fuel, Gauge, Gem, MessageCircle, Mountain, Package, Pickaxe, Radio, Rocket, Shield, Sparkles, Sun, X } from 'lucide-react'
 import { GameCanvas } from './game-canvas'
 import { PLANETS, useGameStore, type PlanetName } from './store'
+import { flightInput } from './input'
 
 type PipLine = { from: 'pip' | 'pilot'; text: string }
 
@@ -44,6 +45,18 @@ export function StarlanceGame() {
   const [question, setQuestion] = useState('')
   const [pipLines, setPipLines] = useState<PipLine[]>([{ from: 'pip', text: 'Flight systems nominal. Where should we point this thing?' }])
   const [night, setNight] = useState(18)
+  const [tiltOn, setTiltOn] = useState(true)
+  const toggleTilt = async () => {
+    const next = !tiltOn
+    if (next) {
+      const doe = DeviceOrientationEvent as unknown as { requestPermission?: () => Promise<string> }
+      if (typeof doe.requestPermission === 'function') {
+        try { await doe.requestPermission() } catch { /* sensor stays silent; drag still steers */ }
+      }
+    }
+    flightInput.tiltOn = next
+    setTiltOn(next)
+  }
   const [mined, setMined] = useState(false)
   const pointerStart = useRef<number | null>(null)
   const landable = distances[currentPlanet] <= 180
@@ -117,7 +130,7 @@ export function StarlanceGame() {
     {mode === 'FLIGHT' && <>
       <header className="flight-header">
         <div className="brand-chip"><span className="brand-mark">S</span><div><strong>STARLANCE</strong><small>FLIGHT DECK <i /> LIVE</small></div></div>
-        <div className="sector-chip"><span>SECTOR 07</span><strong>THE OUTER REACH</strong></div>
+        <button className={`tilt-toggle ${tiltOn ? 'on' : ''}`} onClick={toggleTilt} aria-pressed={tiltOn}><Compass size={14} /><span>TILT</span><strong>{tiltOn ? 'ON' : 'OFF'}</strong></button>
         <button className="icon-button help-button" aria-label="Mission briefing" onClick={() => setPipOpen(true)}><CircleHelp size={19} /></button>
       </header>
       <div className="flight-status">
@@ -125,20 +138,19 @@ export function StarlanceGame() {
         <div className="status-card shield-card"><div className="status-top"><span><Shield size={14} /> SHIELD</span><strong>{shield}<small>%</small></strong></div><div className="gauge-track shield-track"><i style={{ width: `${shield}%` }} /></div><small className="gauge-foot">HULL INTEGRITY GOOD</small></div>
       </div>
       <div className="hold-chip"><Package size={14} /><span>HOLD VALUE</span><strong>¢{holdValue.toLocaleString()}</strong></div>
-      <div className="flight-callout"><span className="callout-line" /><span>DESTINATIONS</span><small>SELECT A BEACON TO PLOT COURSE</small></div>
-      <div className="planet-list" aria-label="Planet destinations">
-        {PLANETS.map((planet, index) => <button key={planet} className={`planet-row ${currentPlanet === planet ? 'selected' : ''}`} onClick={() => setCurrentPlanet(planet)}>
+      <div className="planet-chips" aria-label="Planet destinations">
+        {PLANETS.map((planet, index) => <button key={planet} className={`planet-chip ${currentPlanet === planet ? 'selected' : ''}`} onClick={() => setCurrentPlanet(planet)}>
           <span className={`planet-dot planet-${index}`} />
-          <span className="planet-name"><strong>{planet}</strong><small>{['GLASS OCEAN', 'RED ROCK BELT', 'ICE FRONTIER', 'COLONY RUINS'][index]}</small></span>
-          <span className="planet-distance">{Math.ceil(distances[planet]).toLocaleString()}<small>KM</small></span>
-          {currentPlanet === planet && <span className="course-tag">COURSE</span>}
+          <span className="chip-name">{planet.split(' ')[0].toUpperCase()}</span>
+          <span className="chip-dist">{Math.ceil(distances[planet]).toLocaleString()} KM</span>
         </button>)}
       </div>
       {fuel < 25 && <div className="fuel-warning"><span className="warning-dot" /> CRITICAL RESERVE — FIND A LANDING SITE</div>}
       <div className="flight-bottom">
-        {landable ? <button className="land-button" onClick={goSurface}><span>LAND</span><small>{currentPlanet} · SITE IN RANGE</small><ArrowDown size={22} /></button> : <div className="steer-hint"><ArrowLeft size={16} /><span>DRAG TO STEER</span><ArrowRight size={16} /></div>}
-        <button className="pip-float" onClick={() => setPipOpen(true)} aria-label="Open chat with Pip"><span className="pip-face"><i /><i /></span><span>PIP</span><span className="pip-online" /></button>
+        {landable ? <button className="land-button" onClick={goSurface}><span>LAND</span><small>{currentPlanet} · SITE IN RANGE</small><ArrowDown size={22} /></button> : <div className="steer-hint"><ArrowLeft size={16} /><span>DRAG · TILT · HOLD TO TURN</span><ArrowRight size={16} /></div>}
       </div>
+      <button className="turn-button turn-left" aria-label="Turn left" onPointerDown={(event) => { event.stopPropagation(); flightInput.turnL = true }} onPointerUp={() => { flightInput.turnL = false }} onPointerLeave={() => { flightInput.turnL = false }} onPointerCancel={() => { flightInput.turnL = false }} onContextMenu={(event) => event.preventDefault()}><ArrowLeft size={28} /></button>
+      <button className="turn-button turn-right" aria-label="Turn right" onPointerDown={(event) => { event.stopPropagation(); flightInput.turnR = true }} onPointerUp={() => { flightInput.turnR = false }} onPointerLeave={() => { flightInput.turnR = false }} onPointerCancel={() => { flightInput.turnR = false }} onContextMenu={(event) => event.preventDefault()}><ArrowRight size={28} /></button>
     </>}
 
     {mode === 'SURFACE' && <>

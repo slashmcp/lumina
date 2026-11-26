@@ -54,3 +54,25 @@ button:focus-visible, input:focus-visible { outline: 2px solid #65e8ef; outline-
 @media (min-width: 600px) { .game-shell { max-width: 480px; height: min(100svh, 960px); min-height: 640px; margin: 0 auto; border-inline: 1px solid rgba(150,185,190,.1); }.flight-status { top: 100px; }.hold-chip { top: 183px; }.flight-callout { top: 39%; }.planet-list { bottom: 125px; }.pip-backdrop { background: rgba(0,0,0,.62); }.pip-panel { border: 1px solid rgba(111,224,231,.24); border-radius: 14px 14px 0 0; } }
 @media (max-height: 720px) { .flight-callout { top: 36%; }.planet-list { bottom: 98px; gap: 4px; }.planet-row { min-height: 43px; }.flight-bottom { bottom: max(12px, env(safe-area-inset-bottom)); }.surface-status { top: max(84px, calc(env(safe-area-inset-top) + 72px)); }.surface-landmark { top: 37%; }.surface-bottom { bottom: max(12px, env(safe-area-inset-bottom)); }.ship-window { height: 142px; }.ship-interior { top: 237px; }.pip-panel { height: 76svh; } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; transition-duration: .01ms !important; } }
+
+/* --- Flight HUD slimming: compact top stack, clear viewport (Nov 26) --- */
+.mode-flight .flight-status { top: max(76px, calc(env(safe-area-inset-top) + 64px)); gap: 7px; }
+.mode-flight .status-card { padding: 7px 10px 6px; }
+.mode-flight .status-top strong { font-size: 15px; }
+.mode-flight .gauge-track { margin-top: 6px; }
+.mode-flight .gauge-foot { display: none; }
+.planet-chips { position: absolute; z-index: 2; top: max(132px, calc(env(safe-area-inset-top) + 120px)); left: 20px; right: 20px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.planet-chip { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 2px 5px; border: 1px solid rgba(181,213,217,.14); background: rgba(7,12,17,.66); backdrop-filter: blur(9px); cursor: pointer; color: #dfe9ea; }
+.planet-chip.selected { border-color: rgba(75,223,232,.65); background: rgba(11,27,32,.85); }
+.planet-chip .planet-dot { width: 12px; height: 12px; flex: 0 0 12px; }
+.planet-chip .chip-name { font-size: 8px; letter-spacing: .1em; }
+.planet-chip .chip-dist { font-size: 8px; color: #8fa1a4; font-variant-numeric: tabular-nums; }
+.mode-flight .hold-chip { top: auto; bottom: 108px; left: 20px; transform: none; }
+.mode-flight .fuel-warning { top: max(188px, calc(env(safe-area-inset-top) + 176px)); }
+.tilt-toggle { display: flex; align-items: center; gap: 6px; padding: 8px 10px; border: 1px solid rgba(177,208,212,.2); background: rgba(9,15,20,.7); border-radius: 20px; color: #9fb2b5; font-size: 8px; letter-spacing: .12em; cursor: pointer; }
+.tilt-toggle.on { color: #65e3e8; border-color: rgba(91,225,233,.5); }
+.tilt-toggle strong { font-size: 8px; }
+.turn-button { position: absolute; z-index: 4; bottom: max(20px, env(safe-area-inset-bottom)); width: 74px; height: 74px; border-radius: 50%; display: grid; place-items: center; background: rgba(8,15,21,.55); border: 1px solid rgba(94,226,233,.4); color: #7deef4; backdrop-filter: blur(6px); touch-action: none; user-select: none; -webkit-user-select: none; cursor: pointer; }
+.turn-button:active { background: rgba(38,110,120,.55); }
+.turn-left { left: 18px; }
+.turn-right { right: 18px; }

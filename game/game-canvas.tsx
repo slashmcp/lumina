@@ -8,6 +8,7 @@ import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js'
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js'
 import { useGameStore, type PlanetName } from './store'
+import { flightInput } from './input'
 
 // Planet identity colors carried over from Starlance v1.
 const PLANET_COLORS: Record<PlanetName, number> = {
@@ -529,6 +530,8 @@ export function GameCanvas() {
       let targetX = 0
       let targetY = 1.6
       const onDown = (e: PointerEvent) => {
+        // Touches that land on HUD buttons (turn, land, tilt) are not steering.
+        if ((e.target as HTMLElement | null)?.closest?.('button, a, input, textarea, form')) return
         pointerHeld = true
         targetX = THREE.MathUtils.clamp(((e.clientX / window.innerWidth) * 2 - 1) * 3.4, -3.4, 3.4)
         targetY = THREE.MathUtils.clamp(2.0 - ((e.clientY / window.innerHeight) * 2 - 1) * 1.8, 0.1, 3.9)
@@ -552,6 +555,23 @@ export function GameCanvas() {
           window.removeEventListener('pointerup', onUp)
           window.removeEventListener('pointercancel', onUp)
         })
+      }
+
+      // Tilt steering: lean the phone to fly. Neutral pitch is captured on
+      // the first reading of the run; fresh sensor data overrides the pointer.
+      const tilt = { x: 0, y: 0, seen: 0, neutralBeta: null as number | null }
+      const onTilt = (e: DeviceOrientationEvent) => {
+        if (e.gamma === null || e.beta === null) return
+        if (tilt.neutralBeta === null) tilt.neutralBeta = e.beta
+        const dx = e.gamma
+        const dy = e.beta - tilt.neutralBeta
+        tilt.x = Math.abs(dx) < 3 ? 0 : THREE.MathUtils.clamp(dx / 22, -1, 1)
+        tilt.y = Math.abs(dy) < 3 ? 0 : THREE.MathUtils.clamp(dy / 20, -1, 1)
+        tilt.seen = performance.now()
+      }
+      if (combat) {
+        window.addEventListener('deviceorientation', onTilt)
+        cleanupFns.push(() => window.removeEventListener('deviceorientation', onTilt))
       }
 
       const hitColor = new THREE.Color(0xffa050)
@@ -636,6 +656,16 @@ export function GameCanvas() {
         const closeness = THREE.MathUtils.clamp(1 - distance / 2400, 0, 1)
         const speed = combat ? 25 + closeness * 11 : 4.5
 
+        // Tilt steering: a fresh sensor reading overrides the pointer target.
+        if (flightInput.tiltOn && performance.now() - tilt.seen < 1500) {
+          if (Math.abs(tilt.x) > 0.03) targetX = tilt.x * 3.4
+          if (Math.abs(tilt.y) > 0.03) targetY = THREE.MathUtils.clamp(1.6 + tilt.y * 1.9, 0.1, 3.9)
+        }
+        // Thumb turn buttons: hold to sweep the target sideways; the ship
+        // banks into the turn through its lateral velocity.
+        const turn = (flightInput.turnR ? 1 : 0) - (flightInput.turnL ? 1 : 0)
+        if (turn !== 0) targetX = THREE.MathUtils.clamp(targetX + turn * dt * 7.5, -3.4, 3.4)
+
         // Ship movement: ease toward the pointer target, bank with the turn.
         const prevX = ship.position.x
         const prevY = ship.position.y
@@ -647,7 +677,7 @@ export function GameCanvas() {
         ship.rotation.z = THREE.MathUtils.clamp(-vx * 0.16, -0.85, 0.85)
         ship.rotation.x = -Math.PI / 2.25 + THREE.MathUtils.clamp(vy * 0.05, -0.3, 0.3)
         if (flame) flame.scale.set(1, 0.82 + Math.sin(t * 31) * 0.16 + Math.random() * 0.07, 1)
-        if (!pointerHeld && combat) {
+        if (!pointerHeld && turn === 0 && combat) {
           targetX *= Math.exp(-dt * 1.4)
           targetY += (1.6 - targetY) * Math.exp(-dt * 1.4)
         }
