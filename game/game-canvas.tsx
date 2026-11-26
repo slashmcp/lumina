@@ -362,10 +362,68 @@ export function GameCanvas() {
       pilot.rotation.y = -0.35
       scene.add(pilot)
 
-      tickScene = (t) => {
-        pilot.position.y = Math.abs(Math.sin(t * 0.9)) * 0.03
-        camera.position.x = Math.sin(t * 0.22) * 0.35
-        camera.lookAt(0, 1.15, 0)
+      // Walking: the left stick moves the pilot across the terrain and the
+      // camera trails behind. Ground height mirrors the displaced circle
+      // geometry above (world z = -geometry y).
+      const groundHeight = (wx: number, wz: number) => {
+        const d = Math.hypot(wx, wz)
+        if (d < 4) return 0
+        const lift = Math.sin(wx * 0.32) * Math.cos(wz * 0.27) * 0.55 + Math.sin(wx * 0.09 - wz * 0.13) * 1.15
+        return lift * Math.min(1, d / 14)
+      }
+      const angleLerp = (a: number, b: number, k: number) => {
+        let d = (b - a) % (Math.PI * 2)
+        if (d > Math.PI) d -= Math.PI * 2
+        if (d < -Math.PI) d += Math.PI * 2
+        return a + d * k
+      }
+      let camYaw = -0.15
+      let hopY = 0
+      let hopV = 0
+      const onJump = () => { if (hopY <= 0) hopV = 6.5 }
+      window.addEventListener('starlance:jump', onJump)
+      cleanupFns.push(() => window.removeEventListener('starlance:jump', onJump))
+      const camTarget = new THREE.Vector3()
+
+      tickScene = (t, dt) => {
+        const sL = flightInput.stickL
+        const fwdX = -Math.sin(camYaw)
+        const fwdZ = -Math.cos(camYaw)
+        const rightX = Math.cos(camYaw)
+        const rightZ = -Math.sin(camYaw)
+        let mx = 0
+        let mz = 0
+        if (sL.active) {
+          mx = rightX * sL.x + fwdX * sL.y
+          mz = rightZ * sL.x + fwdZ * sL.y
+        }
+        const moving = Math.hypot(mx, mz) > 0.12
+        if (moving) {
+          pilot.position.x += mx * 5.6 * dt
+          pilot.position.z += mz * 5.6 * dt
+          const r = Math.hypot(pilot.position.x, pilot.position.z)
+          if (r > 34) {
+            pilot.position.x *= 34 / r
+            pilot.position.z *= 34 / r
+          }
+          pilot.rotation.y = angleLerp(pilot.rotation.y, Math.atan2(mx, mz), 1 - Math.exp(-dt * 10))
+          camYaw = angleLerp(camYaw, pilot.rotation.y + Math.PI, 1 - Math.exp(-dt * 1.6))
+        }
+        if (hopV !== 0 || hopY > 0) {
+          hopY += hopV * dt
+          hopV -= 16 * dt
+          if (hopY <= 0) { hopY = 0; hopV = 0 }
+        }
+        const bob = moving ? Math.abs(Math.sin(t * 10)) * 0.06 : Math.abs(Math.sin(t * 0.9)) * 0.03
+        pilot.position.y = groundHeight(pilot.position.x, pilot.position.z) + bob + hopY
+        pilot.rotation.z = moving ? Math.sin(t * 10) * 0.045 : 0
+        camTarget.set(
+          pilot.position.x + Math.sin(camYaw) * 7.5,
+          pilot.position.y + 3.0,
+          pilot.position.z + Math.cos(camYaw) * 7.5,
+        )
+        camera.position.lerp(camTarget, 1 - Math.exp(-dt * 4))
+        camera.lookAt(pilot.position.x, pilot.position.y + 1.25, pilot.position.z)
       }
     } else {
       // FLIGHT — a Star Fox-style rail run. The course streams at the ship;

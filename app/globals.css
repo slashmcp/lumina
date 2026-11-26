@@ -106,3 +106,14 @@ button:focus-visible, input:focus-visible { outline: 2px solid #65e8ef; outline-
   .ship-interior { top: 196px; bottom: 0; overflow-y: auto; padding-bottom: 18px; }
   .title-copy h1 { font-size: 44px; }
 }
+
+/* --- Surface slimming + walking room (Nov 26) --- */
+.mode-surface .surface-status { top: max(72px, calc(env(safe-area-inset-top) + 60px)); }
+.mode-surface .metric { padding: 6px 7px 5px; }
+.mode-surface .metric-value { margin-top: 4px; font-size: 15px; }
+.mode-surface .surface-landmark { top: 20%; max-width: 52%; }
+.mode-surface .surface-landmark h2 { margin: 6px 0 0; font-size: 20px; line-height: 1.02; }
+.mode-surface .surface-landmark p, .mode-surface .surface-landmark .scan-line { display: none; }
+.mode-surface .surface-bottom { left: auto; width: 190px; }
+.mode-surface .action-button { min-height: 54px; padding: 7px 10px; }
+.mode-surface .stick-zone { width: 46%; height: 56%; }
