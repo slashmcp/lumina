@@ -3,7 +3,7 @@
 import { useEffect, useRef } from 'react'
 import { useGameStore, PLANETS } from './store'
 
-export function GameCanvas({ onSteer }: { onSteer?: (delta: number) => void }) {
+export function GameCanvas() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const mode = useGameStore((state) => state.mode)
   const distances = useGameStore((state) => state.distances)
@@ -80,6 +80,7 @@ export function GameCanvas({ onSteer }: { onSteer?: (delta: number) => void }) {
           context.fill()
         })
         context.globalAlpha = 1
+        if (mode !== 'SHIP') {
         const horizon = height * 0.65
         const planetColors = ['#9e684b', '#415d77', '#8d8c72', '#906a9a']
         const planetIndex = PLANETS.indexOf(currentPlanet)
@@ -136,6 +137,7 @@ export function GameCanvas({ onSteer }: { onSteer?: (delta: number) => void }) {
         context.ellipse(0, -12, 4, 13, 0, 0, Math.PI * 2)
         context.fill()
         context.restore()
+        }
       }
       animation = window.requestAnimationFrame(draw)
     }

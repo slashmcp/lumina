@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, ChevronDown, CircleHelp, Fuel, Gauge, Gem, MessageCircle, Mountain, Package, Pickaxe, Radio, Rocket, Shield, Sparkles, Sun, X } from 'lucide-react'
+import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, ChevronDown, CircleHelp, Fuel, Gem, Mountain, Package, Pickaxe, Radio, Rocket, Shield, Sparkles, Sun, X } from 'lucide-react'
 import { GameCanvas } from './game-canvas'
 import { PLANETS, useGameStore, type PlanetName } from './store'
 
@@ -152,7 +152,7 @@ export function StarlanceGame() {
     </>}
 
     {mode === 'SHIP' && <>
-      <header className="flight-header ship-header"><div className="brand-chip"><span className="brand-mark">S</span><div><strong>THE WAYFARER</strong><small>SHIP SYSTEMS <i /> ONLINE</small></div></div><button className="icon-button" aria-label="Open Pip chat" onClick={() => setPipOpen(true)}><MessageCircle size={18} /></button></header>
+      <header className="flight-header ship-header"><div className="brand-chip"><span className="brand-mark">S</span><div><strong>THE WAYFARER</strong><small>SHIP SYSTEMS <i /> ONLINE</small></div></div></header>
       <div className="ship-window"><span className="window-label">DOCKED · {currentPlanet.toUpperCase()}</span><div className="window-planet" /><span className="window-coordinate">OUTER REACH / 07</span></div>
       <section className="ship-interior"><div className="section-kicker"><span /> CARGO & SYSTEMS</div><h2>Ship status</h2>
         <div className="cargo-grid"><Metric label="ROCK" value={rock} icon={Mountain} /><Metric label="CRYSTAL" value={crystal} icon={Gem} /><Metric label="FUEL" value={Math.ceil(fuel)} unit="%" icon={Fuel} /><Metric label="SHIELD" value={shield} unit="%" icon={Shield} /></div>
