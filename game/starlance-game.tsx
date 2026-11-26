@@ -22,6 +22,55 @@ function Metric({ label, value, unit, tone = 'cyan', icon: Icon }: { label: stri
   </div>
 }
 
+function Stick({ side, input }: { side: 'left' | 'right'; input: { active: boolean; x: number; y: number } }) {
+  const zoneRef = useRef<HTMLDivElement>(null)
+  const baseRef = useRef<HTMLDivElement>(null)
+  const knobRef = useRef<HTMLDivElement>(null)
+  const origin = useRef<{ x: number; y: number; id: number } | null>(null)
+  const RADIUS = 52
+
+  const onDown = (event: React.PointerEvent) => {
+    event.stopPropagation()
+    const zone = zoneRef.current
+    if (!zone) return
+    const rect = zone.getBoundingClientRect()
+    origin.current = { x: event.clientX - rect.left, y: event.clientY - rect.top, id: event.pointerId }
+    zone.setPointerCapture(event.pointerId)
+    if (baseRef.current) {
+      baseRef.current.style.left = `${origin.current.x}px`
+      baseRef.current.style.top = `${origin.current.y}px`
+      baseRef.current.style.opacity = '1'
+    }
+    input.active = true
+    input.x = 0
+    input.y = 0
+  }
+  const onMove = (event: React.PointerEvent) => {
+    if (!origin.current || event.pointerId !== origin.current.id) return
+    const rect = zoneRef.current!.getBoundingClientRect()
+    let dx = event.clientX - rect.left - origin.current.x
+    let dy = event.clientY - rect.top - origin.current.y
+    const len = Math.hypot(dx, dy)
+    if (len > RADIUS) { dx = (dx / len) * RADIUS; dy = (dy / len) * RADIUS }
+    input.x = dx / RADIUS
+    input.y = -dy / RADIUS
+    if (knobRef.current) knobRef.current.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`
+  }
+  const onUp = (event: React.PointerEvent) => {
+    if (!origin.current || event.pointerId !== origin.current.id) return
+    origin.current = null
+    input.active = false
+    input.x = 0
+    input.y = 0
+    if (baseRef.current) baseRef.current.style.opacity = '0'
+    if (knobRef.current) knobRef.current.style.transform = 'translate(-50%, -50%)'
+  }
+  return <div ref={zoneRef} data-stick={side} className={`stick-zone stick-${side}`} onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp} onContextMenu={(event) => event.preventDefault()}>
+    <div ref={baseRef} className="stick-base"><div ref={knobRef} className="stick-knob" /></div>
+    <span className="stick-label">{side === 'left' ? 'STICK · MOVE' : 'STICK · TURN + FIRE'}</span>
+  </div>
+}
+
 export function StarlanceGame() {
   const mode = useGameStore((state) => state.mode)
   const setMode = useGameStore((state) => state.setMode)
@@ -147,10 +196,10 @@ export function StarlanceGame() {
       </div>
       {fuel < 25 && <div className="fuel-warning"><span className="warning-dot" /> CRITICAL RESERVE — FIND A LANDING SITE</div>}
       <div className="flight-bottom">
-        {landable ? <button className="land-button" onClick={goSurface}><span>LAND</span><small>{currentPlanet} · SITE IN RANGE</small><ArrowDown size={22} /></button> : <div className="steer-hint"><ArrowLeft size={16} /><span>DRAG · TILT · HOLD TO TURN</span><ArrowRight size={16} /></div>}
+        {landable ? <button className="land-button" onClick={goSurface}><span>LAND</span><small>{currentPlanet} · SITE IN RANGE</small><ArrowDown size={22} /></button> : <div className="steer-hint"><ArrowLeft size={16} /><span>LEFT STICK FLIES · RIGHT TURNS + FIRES</span><ArrowRight size={16} /></div>}
       </div>
-      <button className="turn-button turn-left" aria-label="Turn left" onPointerDown={(event) => { event.stopPropagation(); flightInput.turnL = true }} onPointerUp={() => { flightInput.turnL = false }} onPointerLeave={() => { flightInput.turnL = false }} onPointerCancel={() => { flightInput.turnL = false }} onContextMenu={(event) => event.preventDefault()}><ArrowLeft size={28} /></button>
-      <button className="turn-button turn-right" aria-label="Turn right" onPointerDown={(event) => { event.stopPropagation(); flightInput.turnR = true }} onPointerUp={() => { flightInput.turnR = false }} onPointerLeave={() => { flightInput.turnR = false }} onPointerCancel={() => { flightInput.turnR = false }} onContextMenu={(event) => event.preventDefault()}><ArrowRight size={28} /></button>
+      <Stick side="left" input={flightInput.stickL} />
+      <Stick side="right" input={flightInput.stickR} />
     </>}
 
     {mode === 'SURFACE' && <>

@@ -76,3 +76,33 @@ button:focus-visible, input:focus-visible { outline: 2px solid #65e8ef; outline-
 .turn-button:active { background: rgba(38,110,120,.55); }
 .turn-left { left: 18px; }
 .turn-right { right: 18px; }
+
+/* --- Virtual sticks (Nov 26): left flies, right turns + fires --- */
+.stick-zone { position: absolute; z-index: 3; bottom: 0; width: 44%; height: 48%; touch-action: none; user-select: none; -webkit-user-select: none; }
+.stick-left { left: 0; }
+.stick-right { right: 0; }
+.stick-base { position: absolute; width: 108px; height: 108px; margin: -54px 0 0 -54px; border-radius: 50%; border: 1px solid rgba(94,226,233,.35); background: rgba(8,15,21,.35); opacity: 0; transition: opacity .15s; pointer-events: none; }
+.stick-knob { position: absolute; left: 50%; top: 50%; width: 46px; height: 46px; border-radius: 50%; background: rgba(94,226,233,.28); border: 1px solid rgba(125,238,244,.65); transform: translate(-50%, -50%); }
+.stick-label { position: absolute; bottom: 26px; font-family: 'Arial Narrow', 'Roboto Condensed', Arial, sans-serif; font-size: 8px; letter-spacing: .16em; color: rgba(159,178,181,.55); pointer-events: none; }
+.stick-left .stick-label { left: 24px; }
+.stick-right .stick-label { right: 24px; }
+.mode-flight .flight-bottom { z-index: 5; }
+
+/* --- Landscape play (Nov 26): short, wide screens --- */
+@media (orientation: landscape) and (max-height: 600px) {
+  .game-shell { min-height: 0; height: 100svh; max-width: none; margin: 0; border-inline: none; }
+  .flight-header { top: 10px; left: 14px; right: 14px; }
+  .mode-flight .flight-status { top: 56px; left: 14px; right: auto; width: 296px; }
+  .planet-chips { top: 56px; left: auto; right: 14px; width: 296px; }
+  .mode-flight .hold-chip { top: 112px; bottom: auto; left: 14px; }
+  .mode-flight .fuel-warning { top: 112px; }
+  .stick-zone { height: 80%; width: 38%; }
+  .stick-label { bottom: 14px; }
+  .surface-status { top: 64px; }
+  .surface-landmark { top: 27%; }
+  .surface-landmark h2 { font-size: 30px; }
+  .surface-bottom { bottom: max(10px, env(safe-area-inset-bottom)); }
+  .ship-window { height: 110px; }
+  .ship-interior { top: 196px; bottom: 0; overflow-y: auto; padding-bottom: 18px; }
+  .title-copy h1 { font-size: 44px; }
+}
