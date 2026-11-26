@@ -21,6 +21,9 @@ type GameState = {
   setFuel: (fuel: number) => void
   setDistances: (distances: Record<PlanetName, number>) => void
   setCurrentPlanet: (planet: PlanetName) => void
+  damageShield: (amount: number) => void
+  addHoldValue: (amount: number) => void
+  addRock: (amount: number) => void
   mine: () => void
   jump: () => void
   distillFuel: () => void
@@ -49,6 +52,9 @@ export const useGameStore = create<GameState>((set, get) => ({
   setFuel: (fuel) => set({ fuel: Math.max(0, Math.min(100, fuel)) }),
   setDistances: (distances) => set({ distances }),
   setCurrentPlanet: (currentPlanet) => set({ currentPlanet }),
+  damageShield: (amount) => set((state) => ({ shield: Math.max(0, state.shield - amount) })),
+  addHoldValue: (amount) => set((state) => ({ holdValue: state.holdValue + amount })),
+  addRock: (amount) => set((state) => ({ rock: state.rock + amount })),
   mine: () => set((state) => ({ rock: state.rock + 2, crystal: state.crystal + 1, holdValue: state.holdValue + 165 })),
   jump: () => set((state) => ({ fuel: Math.max(0, state.fuel - 3) })),
   distillFuel: () => {
