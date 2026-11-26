@@ -117,3 +117,11 @@ button:focus-visible, input:focus-visible { outline: 2px solid #65e8ef; outline-
 .mode-surface .surface-bottom { left: auto; width: 190px; }
 .mode-surface .action-button { min-height: 54px; padding: 7px 10px; }
 .mode-surface .stick-zone { width: 46%; height: 56%; }
+
+/* --- Rings objective + landing tracker (Nov 26) --- */
+.rings-count { color: #7deef4; letter-spacing: .1em; }
+.land-tracker { display: flex; flex-direction: column; align-items: center; gap: 6px; color: #c8d6d8; font-family: 'Arial Narrow', 'Roboto Condensed', Arial, sans-serif; font-size: 9px; letter-spacing: .14em; }
+.land-tracker small { color: #829194; font-size: 7px; letter-spacing: .1em; text-align: center; }
+.land-track { width: 210px; height: 3px; background: rgba(198,219,222,.16); }
+.land-track i { display: block; height: 100%; background: #52dfe6; box-shadow: 0 0 8px rgba(82,223,230,.5); transition: width .5s; }
+.land-button { animation: warning-pulse 1s infinite alternate; }

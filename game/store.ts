@@ -15,6 +15,7 @@ type GameState = {
   crystal: number
   bombs: number
   holdValue: number
+  rings: number
   currentPlanet: PlanetName
   distances: Record<PlanetName, number>
   setMode: (mode: GameMode) => void
@@ -22,6 +23,8 @@ type GameState = {
   setDistances: (distances: Record<PlanetName, number>) => void
   setCurrentPlanet: (planet: PlanetName) => void
   damageShield: (amount: number) => void
+  repairShield: (amount: number) => void
+  addRing: () => void
   addHoldValue: (amount: number) => void
   addRock: (amount: number) => void
   mine: () => void
@@ -46,6 +49,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   crystal: 4,
   bombs: 2,
   holdValue: 2480,
+  rings: 0,
   currentPlanet: 'Lyra Prime',
   distances: { ...initialDistances },
   setMode: (mode) => set({ mode }),
@@ -53,6 +57,8 @@ export const useGameStore = create<GameState>((set, get) => ({
   setDistances: (distances) => set({ distances }),
   setCurrentPlanet: (currentPlanet) => set({ currentPlanet }),
   damageShield: (amount) => set((state) => ({ shield: Math.max(0, state.shield - amount) })),
+  repairShield: (amount) => set((state) => ({ shield: Math.min(100, state.shield + amount) })),
+  addRing: () => set((state) => ({ rings: state.rings + 1 })),
   addHoldValue: (amount) => set((state) => ({ holdValue: state.holdValue + amount })),
   addRock: (amount) => set((state) => ({ rock: state.rock + amount })),
   mine: () => set((state) => ({ rock: state.rock + 2, crystal: state.crystal + 1, holdValue: state.holdValue + 165 })),
@@ -69,6 +75,6 @@ export const useGameStore = create<GameState>((set, get) => ({
   },
   restart: () => set({
     mode: 'TITLE', fuel: 78, shield: 92, rock: 12, crystal: 4, bombs: 2,
-    holdValue: 2480, currentPlanet: 'Lyra Prime', distances: { ...initialDistances },
+    holdValue: 2480, rings: 0, currentPlanet: 'Lyra Prime', distances: { ...initialDistances },
   }),
 }))

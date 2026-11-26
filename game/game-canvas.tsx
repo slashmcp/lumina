@@ -541,7 +541,7 @@ export function GameCanvas() {
         scene.add(mesh)
         rings.push({ mesh, active: false, prevZ: 0, scored: false })
       }
-      let ringTimer = 4
+      let ringTimer = 1.5
 
       // Hunter drones.
       type Drone = { group: THREE.Group; active: boolean; phase: number }
@@ -567,7 +567,7 @@ export function GameCanvas() {
         scene.add(group)
         drones.push({ group, active: false, phase: Math.random() * 6 })
       }
-      let droneTimer = 3
+      let rockTimer = 6
 
       // Laser pool.
       type Beam = { mesh: THREE.Mesh; life: number; side: number }
@@ -705,7 +705,7 @@ export function GameCanvas() {
 
       // Seed the course.
       rocks.forEach((rock, i) => {
-        if (combat || i < 5) spawnRock(rock, 40 + i * 16 + Math.random() * 20)
+        if (combat ? i < 2 : i < 5) spawnRock(rock, 40 + i * 16 + Math.random() * 20)
       })
 
       tickScene = (t, dt) => {
@@ -792,11 +792,18 @@ export function GameCanvas() {
         planetMat.color.lerp(targetColor, 0.05)
 
         // Asteroids.
-        rocks.forEach((rock) => {
-          if (!rock.active) {
-            if (combat) spawnRock(rock, 150 + Math.random() * 40)
-            return
+        // Asteroids are sparse scenery now — rings are the objective.
+        if (combat) {
+          rockTimer -= dt
+          const activeRocks = rocks.reduce((n, r) => n + (r.active ? 1 : 0), 0)
+          if (rockTimer <= 0 && activeRocks < 3) {
+            const spare = rocks.find((r) => !r.active)
+            if (spare) spawnRock(spare, 150 + Math.random() * 40)
+            rockTimer = 7 + Math.random() * 5
           }
+        }
+        rocks.forEach((rock) => {
+          if (!rock.active) return
           rock.mesh.position.z += speed * dt
           rock.mesh.rotation.x += rock.spin.x * dt
           rock.mesh.rotation.y += rock.spin.y * dt
@@ -814,7 +821,7 @@ export function GameCanvas() {
               bursts.spawn(p, rockColor, 20, 4.5)
               rock.active = false
               rock.mesh.visible = false
-              damageShip(12, t)
+              damageShip(6, t)
             }
           }
         })
@@ -827,12 +834,12 @@ export function GameCanvas() {
             if (ring) {
               ring.active = true
               ring.scored = false
-              ring.mesh.position.set((Math.random() - 0.5) * 5.6, 0.6 + Math.random() * 2.8, -175)
+              ring.mesh.position.set((Math.random() - 0.5) * 4.6, 0.6 + Math.random() * 2.8, -175)
               ring.prevZ = -175
               ring.mesh.visible = true
               ;(ring.mesh.material as THREE.MeshStandardMaterial).emissive.setHex(0x553a08)
             }
-            ringTimer = 8 + Math.random() * 4
+            ringTimer = 2.6 + Math.random() * 1.6
           }
         }
         rings.forEach((ring) => {
@@ -846,7 +853,11 @@ export function GameCanvas() {
             const dx = ring.mesh.position.x - ship.position.x
             const dy = ring.mesh.position.y - ship.position.y
             if (Math.hypot(dx, dy) < 1.75) {
+              s.addRing()
               s.addHoldValue(250)
+              s.repairShield(4)
+              // Slipstream: threading a ring closes the distance faster.
+              s.setDistances({ ...s.distances, [s.currentPlanet]: Math.max(0, s.distances[s.currentPlanet] - 90) })
               bursts.spawn(ring.mesh.position, goldColor, 18, 3.5)
               ;(ring.mesh.material as THREE.MeshStandardMaterial).emissive.setHex(0x1d5f66)
             }
@@ -857,19 +868,8 @@ export function GameCanvas() {
           }
         })
 
-        // Drones hunt the ship's lane.
-        if (combat) {
-          droneTimer -= dt
-          if (droneTimer <= 0) {
-            const drone = drones.find((d) => !d.active)
-            if (drone) {
-              drone.active = true
-              drone.group.position.set((Math.random() - 0.5) * 10, 0.4 + Math.random() * 3.4, -155)
-              drone.group.visible = true
-            }
-            droneTimer = 5.5 + Math.random() * 3.5
-          }
-        }
+        // Hunter drones are off the course — flight is about threading
+        // rings, not survival. The pool stays unused for now.
         drones.forEach((drone) => {
           if (!drone.active) return
           const p = drone.group.position

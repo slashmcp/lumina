@@ -80,6 +80,7 @@ export function StarlanceGame() {
   const crystal = useGameStore((state) => state.crystal)
   const bombs = useGameStore((state) => state.bombs)
   const holdValue = useGameStore((state) => state.holdValue)
+  const rings = useGameStore((state) => state.rings)
   const currentPlanet = useGameStore((state) => state.currentPlanet)
   const distances = useGameStore((state) => state.distances)
   const setFuel = useGameStore((state) => state.setFuel)
@@ -108,7 +109,7 @@ export function StarlanceGame() {
   }
   const [mined, setMined] = useState(false)
   const pointerStart = useRef<number | null>(null)
-  const landable = distances[currentPlanet] <= 180
+  const landable = distances[currentPlanet] <= 220
 
   useEffect(() => {
     if (mode !== 'FLIGHT') return
@@ -116,7 +117,7 @@ export function StarlanceGame() {
       const state = useGameStore.getState()
       const nextFuel = Math.max(0, state.fuel - 0.3)
       state.setFuel(nextFuel)
-      const nextDistances = { ...state.distances, [state.currentPlanet]: Math.max(0, state.distances[state.currentPlanet] - 44) }
+      const nextDistances = { ...state.distances, [state.currentPlanet]: Math.max(0, state.distances[state.currentPlanet] - 65) }
       state.setDistances(nextDistances)
       if (nextFuel <= 0) state.setMode('STRANDED')
     }, 1000)
@@ -186,7 +187,7 @@ export function StarlanceGame() {
         <div className="status-card fuel-card"><div className="status-top"><span><Fuel size={14} /> FUEL RESERVE</span><strong className={fuel < 25 ? 'critical' : ''}>{Math.ceil(fuel)}<small>%</small></strong></div><div className="gauge-track"><i className={fuel < 25 ? 'critical-fill' : ''} style={{ width: `${fuel}%` }} /></div><small className="gauge-foot">{fuel < 25 ? 'LOW RESERVE · LAND IMMEDIATELY' : 'EST. RANGE 2,480 KM'}</small></div>
         <div className="status-card shield-card"><div className="status-top"><span><Shield size={14} /> SHIELD</span><strong>{shield}<small>%</small></strong></div><div className="gauge-track shield-track"><i style={{ width: `${shield}%` }} /></div><small className="gauge-foot">HULL INTEGRITY GOOD</small></div>
       </div>
-      <div className="hold-chip"><Package size={14} /><span>HOLD VALUE</span><strong>¢{holdValue.toLocaleString()}</strong></div>
+      <div className="hold-chip"><Package size={14} /><span>HOLD VALUE</span><strong>¢{holdValue.toLocaleString()}</strong><span className="rings-count">RINGS {rings}</span></div>
       <div className="planet-chips" aria-label="Planet destinations">
         {PLANETS.map((planet, index) => <button key={planet} className={`planet-chip ${currentPlanet === planet ? 'selected' : ''}`} onClick={() => setCurrentPlanet(planet)}>
           <span className={`planet-dot planet-${index}`} />
@@ -196,7 +197,7 @@ export function StarlanceGame() {
       </div>
       {fuel < 25 && <div className="fuel-warning"><span className="warning-dot" /> CRITICAL RESERVE — FIND A LANDING SITE</div>}
       <div className="flight-bottom">
-        {landable ? <button className="land-button" onClick={goSurface}><span>LAND</span><small>{currentPlanet} · SITE IN RANGE</small><ArrowDown size={22} /></button> : <div className="steer-hint"><ArrowLeft size={16} /><span>LEFT STICK FLIES · RIGHT TURNS + FIRES</span><ArrowRight size={16} /></div>}
+        {landable ? <button className="land-button" onClick={goSurface}><span>LAND</span><small>{currentPlanet} · SITE IN RANGE</small><ArrowDown size={22} /></button> : <div className="land-tracker"><span>APPROACHING {currentPlanet.toUpperCase()}</span><div className="land-track"><i style={{ width: `${Math.min(100, Math.max(2, (1 - distances[currentPlanet] / 2300) * 100))}%` }} /></div><small>{Math.ceil(distances[currentPlanet]).toLocaleString()} KM TO GO · LAND UNLOCKS AT 220 KM · RINGS CLOSE IT FASTER</small></div>}
       </div>
       <Stick side="left" input={flightInput.stickL} />
       <Stick side="right" input={flightInput.stickR} />
