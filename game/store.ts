@@ -2,7 +2,7 @@
 
 import { create } from 'zustand'
 
-export type GameMode = 'TITLE' | 'FLIGHT' | 'SURFACE' | 'SHIP' | 'STRANDED'
+export type GameMode = 'TITLE' | 'FLIGHT' | 'SURFACE' | 'SHIP' | 'LAUNCH' | 'STRANDED'
 export type PlanetName = 'Lyra Prime' | 'Kestrel Reach' | 'Vela Drift' | 'Orison'
 
 export const PLANETS: PlanetName[] = ['Lyra Prime', 'Kestrel Reach', 'Vela Drift', 'Orison']

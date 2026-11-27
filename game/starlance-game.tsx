@@ -147,7 +147,7 @@ export function StarlanceGame() {
 
   const startFlight = () => setMode('FLIGHT')
   const goSurface = () => setMode('SURFACE')
-  const blastoff = () => setMode('FLIGHT')
+  const blastoff = () => setMode('LAUNCH')
 
   return <main className={`game-shell mode-${mode.toLowerCase()}`} onPointerDown={(event) => { pointerStart.current = event.clientX }} onPointerMove={(event) => {
     if (pointerStart.current === null || mode !== 'FLIGHT') return

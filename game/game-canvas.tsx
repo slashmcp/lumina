@@ -107,7 +107,7 @@ function buildShip(flame: boolean): { group: THREE.Group; flame: THREE.Mesh | nu
   group.add(bell)
 
   // Cold-gas RCS blocks, nose and tail quads. Maneuvering is RCS work;
-  // the main bell is for injection burns only.
+  // the main bell burns at blastoff and nowhere else.
   const nozzleGeo = new THREE.BoxGeometry(0.15, 0.15, 0.15)
   for (const ny of [1.85, -1.45]) {
     for (let i = 0; i < 4; i++) {
@@ -162,6 +162,114 @@ function buildPilot(): THREE.Group {
   visor.rotation.y = Math.PI
   pilot.add(visor)
   return pilot
+}
+
+// The ship as she actually is (inspo lock 2026-11-26, starlance-gf-19):
+// a photoreal Starship — 9 m across, ~50 m tall — stainless, black window
+// band, splayed landing legs, floodlit pad. Procedural stand-in until a
+// true model exists; proportions and furniture follow the photo.
+function buildStarship(): THREE.Group {
+  const g = new THREE.Group()
+  const steel = new THREE.MeshStandardMaterial({ color: 0xb9bfc9, roughness: 0.35, metalness: 0.85 })
+  const darkSteel = new THREE.MeshStandardMaterial({ color: 0x565b63, roughness: 0.55, metalness: 0.8 })
+  const bandMat = new THREE.MeshStandardMaterial({ color: 0x101216, roughness: 0.2, metalness: 0.5 })
+  const R = 2.35
+  const baseY = 3.1
+  const bodyH = 15.5
+  const body = new THREE.Mesh(new THREE.CylinderGeometry(R, R, bodyH, 28), steel)
+  body.position.y = baseY + bodyH / 2
+  g.add(body)
+  for (const wy of [0.3, 0.55, 0.78]) {
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(R + 0.015, 0.035, 8, 40), darkSteel)
+    ring.rotation.x = Math.PI / 2
+    ring.position.y = baseY + bodyH * wy
+    g.add(ring)
+  }
+  const band = new THREE.Mesh(new THREE.CylinderGeometry(R + 0.02, R + 0.02, 1.15, 28), bandMat)
+  band.position.y = baseY + bodyH - 0.7
+  g.add(band)
+  const nose = new THREE.Mesh(new THREE.SphereGeometry(R, 28, 18, 0, Math.PI * 2, 0, Math.PI / 2), steel)
+  nose.scale.y = 2.1
+  nose.position.y = baseY + bodyH
+  g.add(nose)
+  for (let i = 0; i < 3; i++) {
+    const a = (i / 3) * Math.PI * 2 + 0.5
+    const fin = new THREE.Mesh(new THREE.BoxGeometry(0.16, 5.6, 2.2), darkSteel)
+    fin.position.set(Math.sin(a) * (R + 0.55), baseY + 2.2, Math.cos(a) * (R + 0.55))
+    fin.rotation.y = a
+    g.add(fin)
+    const bellM = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.55, 0.9, 14, 1, true), darkSteel)
+    bellM.position.set(Math.sin(a) * 1.05, baseY - 0.4, Math.cos(a) * 1.05)
+    g.add(bellM)
+  }
+  const up = new THREE.Vector3(0, 1, 0)
+  for (let i = 0; i < 3; i++) {
+    const a = (i / 3) * Math.PI * 2 + Math.PI / 3
+    const top = new THREE.Vector3(Math.sin(a) * R * 0.9, baseY + 1.4, Math.cos(a) * R * 0.9)
+    const foot = new THREE.Vector3(Math.sin(a) * 4.6, 0.1, Math.cos(a) * 4.6)
+    const strut = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.14, top.distanceTo(foot), 8), steel)
+    strut.position.copy(top).lerp(foot, 0.5)
+    strut.quaternion.setFromUnitVectors(up, foot.clone().sub(top).normalize())
+    g.add(strut)
+    const pad = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.65, 0.16, 10), darkSteel)
+    pad.position.copy(foot)
+    g.add(pad)
+  }
+  const lampMat = new THREE.MeshBasicMaterial({ color: 0xf4f8ff })
+  for (const lx of [-6.5, 6.5]) {
+    const post = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 3.4, 6), darkSteel)
+    post.position.set(lx, 1.7, 3.5)
+    g.add(post)
+    const head = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.22, 0.22), lampMat)
+    head.position.set(lx, 3.45, 3.5)
+    g.add(head)
+    const spot = new THREE.SpotLight(0xdfeaff, 120, 34, 0.75, 0.6, 1)
+    spot.position.set(lx, 3.45, 3.5)
+    spot.target.position.set(0, 2, 0)
+    g.add(spot)
+    g.add(spot.target)
+  }
+  return g
+}
+
+// The harvester drone (inspo lock 2026-11-26, starlance-gf-20): a chunky
+// ducted-fan flyer — belly laser melts the ice, the hose vacuums the
+// meltwater up into the frosted tank. Distill feedstock, live on stage.
+function buildDrone() {
+  const g = new THREE.Group()
+  const steel = new THREE.MeshStandardMaterial({ color: 0x9aa1ab, roughness: 0.4, metalness: 0.85 })
+  const dark = new THREE.MeshStandardMaterial({ color: 0x2c2f34, roughness: 0.6, metalness: 0.6 })
+  const frost = new THREE.MeshStandardMaterial({ color: 0xd7dee6, roughness: 0.85, metalness: 0.1 })
+  const body = new THREE.Mesh(new THREE.SphereGeometry(0.85, 20, 14), steel)
+  body.scale.set(1.25, 0.68, 0.95)
+  g.add(body)
+  const blades: THREE.Object3D[] = []
+  for (const sx of [-1, 1]) {
+    const duct = new THREE.Mesh(new THREE.TorusGeometry(0.55, 0.1, 10, 24), dark)
+    duct.rotation.x = Math.PI / 2
+    duct.position.set(sx * 1.25, 0.12, 0)
+    g.add(duct)
+    const hub = new THREE.Group()
+    hub.position.copy(duct.position)
+    for (let i = 0; i < 3; i++) {
+      const blade = new THREE.Mesh(new THREE.BoxGeometry(0.95, 0.03, 0.12), dark)
+      blade.rotation.y = (i / 3) * Math.PI
+      hub.add(blade)
+    }
+    g.add(hub)
+    blades.push(hub)
+    const bell = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.24, 0.4, 10, 1, true), dark)
+    bell.position.set(sx * 0.5, -0.5, 0.25)
+    g.add(bell)
+  }
+  const tank = new THREE.Mesh(new THREE.SphereGeometry(0.46, 14, 10), frost)
+  tank.position.set(0, -0.55, -0.15)
+  tank.scale.set(1, 0.85, 1)
+  g.add(tank)
+  const emitter = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.1, 0.22, 8), dark)
+  emitter.position.set(0, -0.62, 0.3)
+  g.add(emitter)
+  return { group: g, blades }
 }
 
 function disposeScene(scene: THREE.Scene) {
@@ -325,26 +433,11 @@ export function GameCanvas() {
         scene.add(rock)
       }
 
-      const { group: ship } = buildShip(false)
-      ship.position.set(-7.5, 2.15, -15)
-      ship.scale.setScalar(1.55)
+      // The Starship, landed — she towers over the site, as she should.
+      const ship = buildStarship()
+      ship.position.set(-13, groundHeight(-13, -24) - 0.1, -24)
+      ship.rotation.y = 0.55
       scene.add(ship)
-
-      // v1's real ship, tail-sitting as she lands — transforms lifted
-      // from the monolith (scale 1.89, base resting on the ground). The
-      // procedural hull stays as the fallback until the GLB arrives.
-      new GLTFLoader().load('/models/fighter.glb', (gltf) => {
-        const inner = gltf.scene
-        inner.scale.setScalar(1.89)
-        inner.rotation.x = -Math.PI / 2
-        inner.position.y = 4.44
-        inner.traverse((o) => { if (/gear/i.test(o.name)) o.visible = false })
-        const g = new THREE.Group()
-        g.add(inner)
-        g.position.set(-7.5, groundHeight(-7.5, -15), -15)
-        scene.add(g)
-        ship.visible = false
-      }, undefined, () => {})
 
       const pilot = buildPilot()
       pilot.position.set(0.9, 0, 2.4)
@@ -360,10 +453,38 @@ export function GameCanvas() {
         scene.add(sorn)
       }, undefined, () => {})
 
+      // The harvester drone at work over the ice: laser down, hose down,
+      // melt pool glowing. It is always out here, doing the mining.
+      const droneBase = new THREE.Vector3(6.5, groundHeight(6.5, -7.5) + 3.1, -7.5)
+      const { group: drone, blades: droneBlades } = buildDrone()
+      drone.position.copy(droneBase)
+      drone.rotation.y = -0.4
+      scene.add(drone)
+      const beamMat = new THREE.MeshBasicMaterial({ color: 0xcfefff, transparent: true, opacity: 0.6, blending: THREE.AdditiveBlending, depthWrite: false })
+      const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.05, 3.0, 8, 1, true), beamMat)
+      beam.position.set(0, -2.1, 0.3)
+      drone.add(beam)
+      const hoseCurve = new THREE.CatmullRomCurve3([
+        new THREE.Vector3(0, -0.6, -0.15),
+        new THREE.Vector3(0.35, -1.5, 0.2),
+        new THREE.Vector3(0.8, -2.3, 0.6),
+        new THREE.Vector3(1.0, -3.05, 0.95),
+      ])
+      const hose = new THREE.Mesh(
+        new THREE.TubeGeometry(hoseCurve, 20, 0.07, 8),
+        new THREE.MeshStandardMaterial({ color: 0x1d1f24, roughness: 0.7, metalness: 0.3 }),
+      )
+      drone.add(hose)
+      const poolMat = new THREE.MeshBasicMaterial({ color: 0x9fe8ff, transparent: true, opacity: 0.3, blending: THREE.AdditiveBlending, depthWrite: false })
+      const pool = new THREE.Mesh(new THREE.CircleGeometry(1.25, 24), poolMat)
+      pool.rotation.x = -Math.PI / 2
+      pool.position.set(droneBase.x, groundHeight(droneBase.x, droneBase.z) + 0.04, droneBase.z + 0.3)
+      scene.add(pool)
+
       // Walking: the left stick moves the pilot across the terrain and the
       // camera trails behind. Ground height mirrors the displaced circle
       // geometry above (world z = -geometry y).
-      const groundHeight = (wx: number, wz: number) => {
+      function groundHeight(wx: number, wz: number) {
         const d = Math.hypot(wx, wz)
         if (d < 4) return 0
         const lift = Math.sin(wx * 0.32) * Math.cos(wz * 0.27) * 0.55 + Math.sin(wx * 0.09 - wz * 0.13) * 1.15
@@ -422,6 +543,12 @@ export function GameCanvas() {
             sorn.rotation.y = angleLerp(sorn.rotation.y, Math.atan2(sdx, sdz), 1 - Math.exp(-dt * 3))
           }
         }
+        drone.position.y = droneBase.y + Math.sin(t * 1.25) * 0.12
+        drone.rotation.y = -0.4 + Math.sin(t * 0.23) * 0.15
+        droneBlades.forEach((b) => { b.rotation.y += dt * 28 })
+        beamMat.opacity = 0.55 + Math.sin(t * 37) * 0.12 + Math.random() * 0.1
+        poolMat.opacity = 0.26 + Math.sin(t * 2.4) * 0.08
+        pool.scale.setScalar(1 + Math.sin(t * 2.4) * 0.05)
         pilot.rotation.z = moving ? Math.sin(t * 10) * 0.045 : 0
         camTarget.set(
           pilot.position.x + Math.sin(camYaw) * 7.5,
@@ -430,6 +557,97 @@ export function GameCanvas() {
         )
         camera.position.lerp(camTarget, 1 - Math.exp(-dt * 4))
         camera.lookAt(pilot.position.x, pilot.position.y + 1.25, pilot.position.z)
+      }
+    } else if (mode === 'LAUNCH') {
+      // BLASTOFF — ignition, liftoff, and the gravity turn: she rises
+      // vertical, then pitches over toward the horizon as she climbs,
+      // engines cut at MECO, and the fade hands over to FLIGHT.
+      // Tap anywhere to skip.
+      scene.background = new THREE.Color(0x04070d)
+      scene.add(new THREE.HemisphereLight(0x8fb4d8, 0x1a2027, 0.7))
+      const moon = new THREE.DirectionalLight(0xcfe4ff, 1.6)
+      moon.position.set(-14, 22, 10)
+      scene.add(moon)
+
+      const starGeo = new THREE.BufferGeometry()
+      const starPos = new Float32Array(900 * 3)
+      for (let i = 0; i < 900; i++) {
+        starPos[i * 3] = (Math.random() - 0.5) * 320
+        starPos[i * 3 + 1] = Math.random() * 150 - 5
+        starPos[i * 3 + 2] = (Math.random() - 0.5) * 320
+      }
+      starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3))
+      scene.add(new THREE.Points(starGeo, new THREE.PointsMaterial({ color: 0xdceaff, size: 0.55 })))
+
+      const ground = new THREE.Mesh(
+        new THREE.CircleGeometry(70, 40),
+        new THREE.MeshStandardMaterial({ color: 0x232a33, roughness: 1 }),
+      )
+      ground.rotation.x = -Math.PI / 2
+      scene.add(ground)
+
+      const ship = buildStarship()
+      scene.add(ship)
+
+      // The main engines burn here, and only here.
+      const flameMat = new THREE.MeshBasicMaterial({ color: 0xffa63d, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide })
+      const flame = new THREE.Mesh(new THREE.ConeGeometry(1.45, 9, 20, 1, true), flameMat)
+      flame.rotation.x = Math.PI
+      flame.visible = false
+      ship.add(flame)
+      const coreMat = new THREE.MeshBasicMaterial({ color: 0xfff2cf, transparent: true, opacity: 0.95, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide })
+      const core = new THREE.Mesh(new THREE.ConeGeometry(0.8, 5.5, 16, 1, true), coreMat)
+      core.rotation.x = Math.PI
+      core.visible = false
+      ship.add(core)
+      const glowMat = new THREE.MeshBasicMaterial({ color: 0xffc98a, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false })
+      const glowDisc = new THREE.Mesh(new THREE.CircleGeometry(7, 28), glowMat)
+      glowDisc.rotation.x = -Math.PI / 2
+      glowDisc.position.y = 0.05
+      scene.add(glowDisc)
+
+      const fadeMat = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0, depthTest: false })
+      const fade = new THREE.Mesh(new THREE.PlaneGeometry(30, 30), fadeMat)
+      fade.position.z = -2
+      camera.add(fade)
+      scene.add(camera)
+      camera.position.set(13, 4.5, 19)
+
+      let launchT = 0
+      let done = false
+      const finish = () => {
+        if (done) return
+        done = true
+        useGameStore.getState().setMode('FLIGHT')
+      }
+      const onSkip = () => finish()
+      window.addEventListener('pointerdown', onSkip)
+      cleanupFns.push(() => window.removeEventListener('pointerdown', onSkip))
+
+      tickScene = (t, dt) => {
+        launchT += dt
+        const T = launchT
+        const ignite = THREE.MathUtils.smoothstep(T, 0.1, 0.9)
+        const climb = Math.pow(Math.max(0, T - 0.9), 1.6) * 2.2
+        const turn = THREE.MathUtils.smoothstep(T, 2.4, 6.4) * 1.15
+        ship.position.y = climb
+        ship.position.z = -Math.pow(Math.max(0, T - 2.4), 2) * 1.35
+        ship.rotation.x = -turn
+        const meco = T > 6.2 ? Math.max(0, 1 - (T - 6.2) * 2.2) : 1
+        const fs = ignite * meco
+        flame.visible = fs > 0.02
+        core.visible = flame.visible
+        const flick = 0.85 + Math.random() * 0.25
+        flame.scale.set(0.7 + fs * 0.5, Math.max(0.001, fs * flick), 0.7 + fs * 0.5)
+        flame.position.y = 2.3 - 4.5 * flame.scale.y
+        core.scale.set(0.8 + fs * 0.3, Math.max(0.001, fs * flick), 0.8 + fs * 0.3)
+        core.position.y = 2.3 - 2.75 * core.scale.y
+        glowMat.opacity = 0.5 * ignite * Math.max(0, 1 - climb / 26)
+        const shake = T > 0.1 && T < 2.8 ? (Math.random() - 0.5) * 0.07 * ignite : 0
+        camera.position.set(13 - Math.min(6, Math.max(0, T - 2) * 1.2) + shake, 4.5 + Math.min(10, climb * 0.22), 19)
+        camera.lookAt(ship.position.x, ship.position.y + 9 - turn * 4, ship.position.z - turn * 6)
+        fadeMat.opacity = THREE.MathUtils.smoothstep(T, 6.6, 7.4)
+        if (T >= 7.45) finish()
       }
     } else {
       // FLIGHT — a Star Fox-style rail run. The course streams at the ship;
@@ -491,12 +709,15 @@ export function GameCanvas() {
       ship.rotation.x = -Math.PI / 2.25
       scene.add(ship)
 
-      // Propulsion truth (Will, 2026-11-26): steering and avoidance are
-      // cold-gas RCS work — short pale puffs from the nozzle blocks. The
-      // main engine burns only for injection: entering the run and
-      // retargeting to a new world.
-      let burn = 1
-      let burnPlanet = useGameStore.getState().currentPlanet
+      // Propulsion truth (Will, 2026-11-26): the main engines are OFF in
+      // flight — they burn in the blastoff sequence and nowhere else.
+      // Steering and avoidance are cold-gas RCS work: short pale puffs
+      // from the nozzle blocks.
+      if (flame) flame.visible = false
+      ship.traverse((o) => {
+        const l = o as THREE.PointLight
+        if (l.isPointLight) l.intensity = 0
+      })
       type Puff = { mesh: THREE.Mesh; life: number; dir: THREE.Vector3 }
       const puffGeo = new THREE.ConeGeometry(0.09, 0.55, 8)
       const puffs: Puff[] = []
@@ -746,10 +967,7 @@ export function GameCanvas() {
         const distance = s.distances[s.currentPlanet]
         const closeness = THREE.MathUtils.clamp(1 - distance / 2400, 0, 1)
         const speed = combat ? 25 + closeness * 11 : 4.5
-        // A new destination means a new injection burn.
-        if (s.currentPlanet !== burnPlanet) { burnPlanet = s.currentPlanet; burn = 1 }
-        burn = Math.max(0, burn - dt / 1.6)
-        const spd = speed * (1 + burn * 0.7)
+        const spd = speed
 
         // Virtual sticks: the left stick flies the ship in every direction;
         // the right stick turns (analog) and fires while deflected.
@@ -779,10 +997,6 @@ export function GameCanvas() {
         const vy = dt > 0 ? (ship.position.y - prevY) / dt : 0
         ship.rotation.z = THREE.MathUtils.clamp(-vx * 0.16, -0.85, 0.85)
         ship.rotation.x = -Math.PI / 2.25 + THREE.MathUtils.clamp(vy * 0.05, -0.3, 0.3)
-        // Main engine: a low coast flicker that flares only during an
-        // injection burn. Steering never touches it — that is RCS work.
-        if (flame) flame.scale.set(1, 0.4 + burn * 1.9 + Math.sin(t * 31) * 0.08 + Math.random() * 0.04, 1)
-
         // RCS: lateral/vertical corrections puff from the opposite side.
         puffCooldown -= dt
         if (puffCooldown <= 0) {
