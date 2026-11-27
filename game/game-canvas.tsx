@@ -26,51 +26,42 @@ const GROUND_COLORS: Record<PlanetName, number> = {
   Orison: 0x453a5e,
 }
 
-function makeRockTexture(): THREE.Texture {
+// Surface ice, from the inspo photos (gf-19/gf-20): a dark frozen base
+// with the resource glowing through it — cyan veins inside the ice.
+function makeIceTexture(): THREE.Texture {
   const c = document.createElement('canvas')
-  c.width = c.height = 256
+  c.width = c.height = 512
   const g = c.getContext('2d')!
-  g.fillStyle = '#6f6154'
-  g.fillRect(0, 0, 256, 256)
-  for (let i = 0; i < 1500; i++) {
-    const shade = 70 + Math.floor(Math.random() * 90)
-    g.fillStyle = `rgba(${shade},${shade * 0.88},${shade * 0.72},${0.16 + Math.random() * 0.3})`
+  g.fillStyle = '#8b98a5'
+  g.fillRect(0, 0, 512, 512)
+  for (let i = 0; i < 380; i++) {
+    const v = 120 + Math.floor(Math.random() * 70)
+    g.fillStyle = `rgba(${v * 0.92},${v},${v * 1.08},${0.10 + Math.random() * 0.16})`
     g.beginPath()
-    g.arc(Math.random() * 256, Math.random() * 256, 1 + Math.random() * 5, 0, Math.PI * 2)
+    g.ellipse(Math.random() * 512, Math.random() * 512, 14 + Math.random() * 80, 9 + Math.random() * 50, Math.random() * 3, 0, Math.PI * 2)
     g.fill()
   }
-  g.strokeStyle = 'rgba(30,24,18,0.5)'
-  for (let i = 0; i < 14; i++) {
+  g.lineWidth = 1.7
+  for (let i = 0; i < 30; i++) {
+    g.strokeStyle = `rgba(110,235,250,${0.25 + Math.random() * 0.45})`
+    g.shadowColor = '#50e6f5'
+    g.shadowBlur = 8
     g.beginPath()
-    let x = Math.random() * 256
-    let y = Math.random() * 256
+    let x = Math.random() * 512
+    let y = Math.random() * 512
     g.moveTo(x, y)
-    for (let j = 0; j < 5; j++) {
-      x += (Math.random() - 0.5) * 60
-      y += (Math.random() - 0.5) * 60
+    for (let j = 0; j < 4; j++) {
+      x += (Math.random() - 0.5) * 140
+      y += (Math.random() - 0.5) * 140
       g.lineTo(x, y)
     }
     g.stroke()
   }
   const tex = new THREE.CanvasTexture(c)
   tex.wrapS = tex.wrapT = THREE.RepeatWrapping
+  tex.repeat.set(5, 5)
   tex.colorSpace = THREE.SRGBColorSpace
   return tex
-}
-
-function jitteredRockGeometry(seed: number): THREE.BufferGeometry {
-  const geo = new THREE.DodecahedronGeometry(1, 1)
-  const pos = geo.attributes.position as THREE.BufferAttribute
-  const v = new THREE.Vector3()
-  for (let i = 0; i < pos.count; i++) {
-    v.fromBufferAttribute(pos, i)
-    const n = Math.sin(i * 12.9898 + seed * 78.233) * 43758.5453
-    const jitter = 1 + (n - Math.floor(n) - 0.5) * 0.44
-    v.multiplyScalar(jitter)
-    pos.setXYZ(i, v.x, v.y, v.z)
-  }
-  geo.computeVertexNormals()
-  return geo
 }
 
 function buildShip(flame: boolean): { group: THREE.Group; flame: THREE.Mesh | null } {
@@ -408,7 +399,7 @@ export function GameCanvas() {
       groundGeo.computeVertexNormals()
       const ground = new THREE.Mesh(
         groundGeo,
-        new THREE.MeshStandardMaterial({ color: GROUND_COLORS[state.currentPlanet], roughness: 1, metalness: 0.02, flatShading: true }),
+        new THREE.MeshStandardMaterial({ color: GROUND_COLORS[state.currentPlanet], map: makeIceTexture(), roughness: 0.9, metalness: 0.02, flatShading: true }),
       )
       ground.rotation.x = -Math.PI / 2
       scene.add(ground)
@@ -434,6 +425,21 @@ export function GameCanvas() {
         rock.position.set(Math.cos(angle) * radius, size * 0.5, Math.sin(angle) * radius - 2)
         rock.rotation.set(i, i * 2.1, i * 0.4)
         scene.add(rock)
+      }
+
+      // Broken ice, from the drone photo: pale shards scattered across
+      // the flats, tilted where the sheet cracked.
+      const shardMat = new THREE.MeshStandardMaterial({ color: 0xa8d8e8, roughness: 0.25, metalness: 0.1, transparent: true, opacity: 0.85, flatShading: true })
+      for (let i = 0; i < 26; i++) {
+        const h = 0.5 + ((i * 31) % 10) / 14
+        const shard = new THREE.Mesh(new THREE.ConeGeometry(0.16 + ((i * 17) % 10) / 42, h, 5), shardMat)
+        const angle = i * 2.7 + 1.1
+        const radius = 3 + ((i * 47) % 29)
+        const sx = Math.cos(angle) * radius
+        const sz = Math.sin(angle) * radius - 2
+        shard.position.set(sx, h * 0.32, sz)
+        shard.rotation.set(((i * 13) % 10) / 22, i * 1.7, ((i * 7) % 10) / 26)
+        scene.add(shard)
       }
 
       // The Starship, landed — she towers over the site, as she should.
@@ -766,39 +772,47 @@ export function GameCanvas() {
       let strandedSent = false
 
       // Asteroid pool.
-      const rockTexture = makeRockTexture()
-      const rockGeos = [jitteredRockGeometry(1), jitteredRockGeometry(2), jitteredRockGeometry(3)]
-      type Rock = { mesh: THREE.Mesh; radius: number; hp: number; spin: THREE.Vector3; active: boolean }
-      const rocks: Rock[] = []
-      const rockMat = new THREE.MeshStandardMaterial({ map: rockTexture, roughness: 1, metalness: 0.03, flatShading: true })
-      for (let i = 0; i < 14; i++) {
-        const mesh = new THREE.Mesh(rockGeos[i % 3], rockMat)
-        mesh.visible = false
-        scene.add(mesh)
-        rocks.push({ mesh, radius: 1, hp: 2, spin: new THREE.Vector3(), active: false })
-      }
-      const spawnRock = (rock: Rock, ahead: number) => {
-        rock.active = true
-        rock.hp = 2
-        rock.radius = 0.7 + Math.random() * 1.6
-        rock.mesh.scale.setScalar(rock.radius)
-        rock.mesh.position.set((Math.random() - 0.5) * 15, -1 + Math.random() * 7.5, -ahead)
-        rock.mesh.rotation.set(Math.random() * 3, Math.random() * 3, Math.random() * 3)
-        rock.spin.set((Math.random() - 0.5) * 1.4, (Math.random() - 0.5) * 1.4, (Math.random() - 0.5) * 1.4)
-        rock.mesh.visible = true
-      }
-
-      // Gold rings to thread.
+      // No asteroids (Will, 2026-11-26). The course is rings, laid out
+      // in Sonic-style trails — lines, arcs, and sweeps to follow.
       type Ring = { mesh: THREE.Mesh; active: boolean; prevZ: number; scored: boolean }
       const rings: Ring[] = []
       const ringMat = new THREE.MeshStandardMaterial({ color: 0xd9a441, metalness: 1, roughness: 0.28, emissive: 0x553a08, emissiveIntensity: 1.1 })
-      for (let i = 0; i < 4; i++) {
+      for (let i = 0; i < 16; i++) {
         const mesh = new THREE.Mesh(new THREE.TorusGeometry(2.3, 0.09, 12, 44), ringMat.clone())
         mesh.visible = false
         scene.add(mesh)
         rings.push({ mesh, active: false, prevZ: 0, scored: false })
       }
       let ringTimer = 1.5
+      const spawnRingTrail = () => {
+        const free = rings.filter((r) => !r.active)
+        const count = Math.min(free.length, 5 + Math.floor(Math.random() * 3))
+        if (count < 4) return
+        const shape = Math.random()
+        const sweepDir = Math.random() < 0.5 ? 1 : -1
+        const x0 = (Math.random() - 0.5) * 3.2
+        const y0 = 0.8 + Math.random() * 2.2
+        const dx = (Math.random() - 0.5) * 0.8
+        const dy = (Math.random() - 0.5) * 0.5
+        for (let i = 0; i < count; i++) {
+          const ring = free[i]
+          const f = count > 1 ? i / (count - 1) : 0
+          let x = x0 + dx * i
+          let y = y0 + dy * i
+          if (shape < 0.45) y += Math.sin(f * Math.PI) * 1.15
+          else if (shape < 0.75) x += Math.sin(f * Math.PI) * 1.5 * sweepDir
+          ring.active = true
+          ring.scored = false
+          ring.mesh.position.set(
+            THREE.MathUtils.clamp(x, -3.6, 3.6),
+            THREE.MathUtils.clamp(y, 0.25, 4.1),
+            -175 - i * 8,
+          )
+          ring.prevZ = ring.mesh.position.z
+          ring.mesh.visible = true
+          ;(ring.mesh.material as THREE.MeshStandardMaterial).emissive.setHex(0x553a08)
+        }
+      }
 
       // Hunter drones.
       type Drone = { group: THREE.Group; active: boolean; phase: number }
@@ -824,8 +838,6 @@ export function GameCanvas() {
         scene.add(group)
         drones.push({ group, active: false, phase: Math.random() * 6 })
       }
-      let rockTimer = 6
-
       // Laser pool.
       type Beam = { mesh: THREE.Mesh; life: number; side: number }
       const beams: Beam[] = []
@@ -890,7 +902,6 @@ export function GameCanvas() {
       }
 
       const hitColor = new THREE.Color(0xffa050)
-      const rockColor = new THREE.Color(0x9a8a76)
       const goldColor = new THREE.Color(0xffcf6e)
 
       const fireLasers = (t: number) => {
@@ -904,45 +915,21 @@ export function GameCanvas() {
           beam.side = side
         }
         // Nearest shootable target roughly along the aim line wins.
-        let best: { kind: 'rock' | 'drone'; idx: number; z: number } | null = null
-        rocks.forEach((rock, idx) => {
-          if (!rock.active) return
-          const p = rock.mesh.position
-          if (p.z < -75 || p.z > -5) return
-          if (Math.abs(p.x - ship.position.x) > 1.15 + rock.radius * 0.45) return
-          if (Math.abs(p.y - ship.position.y) > 1.15 + rock.radius * 0.45) return
-          if (!best || p.z > best.z) best = { kind: 'rock', idx, z: p.z }
-        })
+        let best: { idx: number; z: number } | null = null
         drones.forEach((drone, idx) => {
           if (!drone.active) return
           const p = drone.group.position
           if (p.z < -75 || p.z > -5) return
           if (Math.abs(p.x - ship.position.x) > 1.3) return
           if (Math.abs(p.y - ship.position.y) > 1.3) return
-          if (!best || p.z > best.z) best = { kind: 'drone', idx, z: p.z }
+          if (!best || p.z > best.z) best = { idx, z: p.z }
         })
         if (!best) return
-        const hit = best as { kind: 'rock' | 'drone'; idx: number; z: number }
-        if (hit.kind === 'drone') {
-          const drone = drones[hit.idx]
-          bursts.spawn(drone.group.position, hitColor, 22, 5)
-          drone.active = false
-          drone.group.visible = false
-          s.addHoldValue(120)
-        } else {
-          const rock = rocks[hit.idx]
-          rock.hp -= 1
-          bursts.spawn(rock.mesh.position, rockColor, rock.hp <= 0 ? 26 : 8, 4)
-          if (rock.hp <= 0) {
-            rock.active = false
-            rock.mesh.visible = false
-            if (Math.random() < 0.45) s.addRock(1)
-            s.addHoldValue(35)
-          } else {
-            rock.mesh.scale.setScalar(rock.radius * 0.82)
-            rock.radius *= 0.82
-          }
-        }
+        const drone = drones[(best as { idx: number; z: number }).idx]
+        bursts.spawn(drone.group.position, hitColor, 22, 5)
+        drone.active = false
+        drone.group.visible = false
+        s.addHoldValue(120)
         void t
       }
 
@@ -959,11 +946,6 @@ export function GameCanvas() {
           s.setMode('STRANDED')
         }
       }
-
-      // Seed the course.
-      rocks.forEach((rock, i) => {
-        if (combat ? i < 2 : i < 5) spawnRock(rock, 40 + i * 16 + Math.random() * 20)
-      })
 
       tickScene = (t, dt) => {
         const s = useGameStore.getState()
@@ -1054,55 +1036,12 @@ export function GameCanvas() {
         targetColor.setHex(PLANET_COLORS[s.currentPlanet])
         planetMat.color.lerp(targetColor, 0.05)
 
-        // Asteroids.
-        // Asteroids are sparse scenery now — rings are the objective.
-        if (combat) {
-          rockTimer -= dt
-          const activeRocks = rocks.reduce((n, r) => n + (r.active ? 1 : 0), 0)
-          if (rockTimer <= 0 && activeRocks < 3) {
-            const spare = rocks.find((r) => !r.active)
-            if (spare) spawnRock(spare, 150 + Math.random() * 40)
-            rockTimer = 7 + Math.random() * 5
-          }
-        }
-        rocks.forEach((rock) => {
-          if (!rock.active) return
-          rock.mesh.position.z += spd * dt
-          rock.mesh.rotation.x += rock.spin.x * dt
-          rock.mesh.rotation.y += rock.spin.y * dt
-          rock.mesh.rotation.z += rock.spin.z * dt
-          const p = rock.mesh.position
-          if (p.z > 13) {
-            rock.active = false
-            rock.mesh.visible = false
-            return
-          }
-          if (combat && p.z > -1.8 && p.z < 1.8) {
-            const dx = p.x - ship.position.x
-            const dy = p.y - ship.position.y
-            if (dx * dx + dy * dy < Math.pow(rock.radius * 0.85 + 0.72, 2)) {
-              bursts.spawn(p, rockColor, 20, 4.5)
-              rock.active = false
-              rock.mesh.visible = false
-              damageShip(6, t)
-            }
-          }
-        })
-
-        // Rings.
+        // Ring trails: a fresh trail every few seconds, Sonic-style.
         if (combat) {
           ringTimer -= dt
           if (ringTimer <= 0) {
-            const ring = rings.find((r) => !r.active)
-            if (ring) {
-              ring.active = true
-              ring.scored = false
-              ring.mesh.position.set((Math.random() - 0.5) * 4.6, 0.6 + Math.random() * 2.8, -175)
-              ring.prevZ = -175
-              ring.mesh.visible = true
-              ;(ring.mesh.material as THREE.MeshStandardMaterial).emissive.setHex(0x553a08)
-            }
-            ringTimer = 2.6 + Math.random() * 1.6
+            spawnRingTrail()
+            ringTimer = 4.5 + Math.random() * 2
           }
         }
         rings.forEach((ring) => {

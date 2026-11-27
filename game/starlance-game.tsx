@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, ChevronDown, CircleHelp, Compass, Fuel, Gauge, Gem, MessageCircle, Mountain, Package, Pickaxe, Radio, Rocket, Shield, Sparkles, Sun, X } from 'lucide-react'
+import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, ChevronDown, CircleHelp, Compass, Fuel, Gauge, Gem, MessageCircle, Moon, Mountain, Package, Pickaxe, Radio, Rocket, Shield, Sparkles, Sun, X } from 'lucide-react'
 import { GameCanvas } from './game-canvas'
 import { PLANETS, useGameStore, type PlanetName } from './store'
 import { flightInput } from './input'
@@ -94,7 +94,6 @@ export function StarlanceGame() {
   const [pipOpen, setPipOpen] = useState(false)
   const [question, setQuestion] = useState('')
   const [pipLines, setPipLines] = useState<PipLine[]>([{ from: 'pip', text: 'Flight systems nominal. Where should we point this thing?' }])
-  const [night, setNight] = useState(18)
   const [tiltOn, setTiltOn] = useState(true)
   const toggleTilt = async () => {
     const next = !tiltOn
@@ -121,12 +120,6 @@ export function StarlanceGame() {
       state.setDistances(nextDistances)
       if (nextFuel <= 0) state.setMode('STRANDED')
     }, 1000)
-    return () => window.clearInterval(tick)
-  }, [mode])
-
-  useEffect(() => {
-    if (mode !== 'SURFACE') return
-    const tick = window.setInterval(() => setNight((value) => Math.max(0, value - 1)), 1000)
     return () => window.clearInterval(tick)
   }, [mode])
 
@@ -204,12 +197,11 @@ export function StarlanceGame() {
     </>}
 
     {mode === 'SURFACE' && <>
-      <header className="flight-header surface-header"><div className="brand-chip"><span className="brand-mark">S</span><div><strong>{currentPlanet.toUpperCase()}</strong><small>SURFACE EXPEDITION <i /> LIVE</small></div></div><div className="day-chip"><Sun size={15} /><span>DAYLIGHT</span><strong>00:{String(night).padStart(2, '0')}</strong></div></header>
+      <header className="flight-header surface-header"><div className="brand-chip"><span className="brand-mark">S</span><div><strong>{currentPlanet.toUpperCase()}</strong><small>SURFACE EXPEDITION <i /> LIVE</small></div></div><div className="day-chip"><Moon size={15} /><span>NIGHT SIDE</span><strong>PERMANENT</strong></div></header>
       <div className="surface-status"><Metric label="FUEL" value={Math.ceil(fuel)} unit="%" icon={Fuel} /><Metric label="SHIELD" value={shield} unit="%" icon={Shield} /><Metric label="ROCK" value={rock} icon={Mountain} /><Metric label="CRYSTAL" value={crystal} icon={Gem} /></div>
       <div className="surface-landmark"><span className="eyebrow"><span /> UNKNOWN TERRAIN</span><h2>THE GLASS<br />CANYON</h2><p>{mined ? 'Fresh deposits exposed. Pip is scanning for more.' : 'A mineral seam glows beneath the fractured ice.'}</p><span className="scan-line" /></div>
-      <div className="surface-bottom"><div className="night-meter"><Sun size={15} /><span>DARKNESS IN</span><strong>00:{String(night).padStart(2, '0')}</strong><div><i style={{ width: `${Math.max(8, (night / 18) * 100)}%` }} /></div></div>
+      <div className="surface-bottom">
         <div className="action-grid"><button className="action-button" onClick={() => { jump(); setMined(false); window.dispatchEvent(new CustomEvent('starlance:jump')) }}><ArrowUp size={18} /><strong>JUMP</strong><small>BOOST · 3 FUEL</small></button><button className="action-button mine-button" onClick={() => { mine(); setMined(true) }}><Pickaxe size={18} /><strong>MINE</strong><small>+2 ROCK · +1 GEM</small></button><button className="action-button" onClick={() => setPipOpen(true)}><Radio size={18} /><strong>CALL</strong><small>OPEN PIP COMMS</small></button><button className="action-button ship-button" onClick={() => setMode('SHIP')}><Rocket size={18} /><strong>SHIP</strong><small>RETURN TO SHIP</small></button></div>
-        {night === 0 && <div className="fuel-warning"><span className="warning-dot" /> NIGHTFALL APPROACHING — RETURN TO SHIP</div>}
       </div>
       <Stick side="left" input={flightInput.stickL} />
     </>}
