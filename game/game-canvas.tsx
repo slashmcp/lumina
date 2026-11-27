@@ -7,6 +7,7 @@ import { RenderPass } from 'three/addons/postprocessing/RenderPass.js'
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js'
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js'
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
 import { useGameStore, type PlanetName } from './store'
 import { flightInput } from './input'
 
@@ -53,46 +54,6 @@ function makeRockTexture(): THREE.Texture {
   }
   const tex = new THREE.CanvasTexture(c)
   tex.wrapS = tex.wrapT = THREE.RepeatWrapping
-  tex.colorSpace = THREE.SRGBColorSpace
-  return tex
-}
-
-function makeTerrainTexture(planet: PlanetName): THREE.Texture {
-  const c = document.createElement('canvas')
-  c.width = c.height = 512
-  const g = c.getContext('2d')!
-  const base = new THREE.Color(GROUND_COLORS[planet])
-  g.fillStyle = `#${base.getHexString()}`
-  g.fillRect(0, 0, 512, 512)
-  for (let i = 0; i < 420; i++) {
-    const v = (Math.random() - 0.5) * 0.24
-    const col = base.clone().offsetHSL(0, 0, v * 0.5)
-    g.fillStyle = `rgba(${(col.r * 255) | 0},${(col.g * 255) | 0},${(col.b * 255) | 0},0.25)`
-    g.beginPath()
-    g.ellipse(Math.random() * 512, Math.random() * 512, 12 + Math.random() * 70, 8 + Math.random() * 44, Math.random() * 3, 0, Math.PI * 2)
-    g.fill()
-  }
-  // The resource shows through the ground: glowing veins in the ice and rock.
-  const vein = planet === 'Kestrel Reach' ? 'rgba(255,150,60,' : 'rgba(80,230,245,'
-  g.lineWidth = 1.6
-  for (let i = 0; i < 26; i++) {
-    g.strokeStyle = `${vein}${0.12 + Math.random() * 0.3})`
-    g.shadowColor = planet === 'Kestrel Reach' ? '#ff9640' : '#50e6f5'
-    g.shadowBlur = 7
-    g.beginPath()
-    let x = Math.random() * 512
-    let y = Math.random() * 512
-    g.moveTo(x, y)
-    for (let j = 0; j < 4; j++) {
-      x += (Math.random() - 0.5) * 130
-      y += (Math.random() - 0.5) * 130
-      g.lineTo(x, y)
-    }
-    g.stroke()
-  }
-  const tex = new THREE.CanvasTexture(c)
-  tex.wrapS = tex.wrapT = THREE.RepeatWrapping
-  tex.repeat.set(5, 17)
   tex.colorSpace = THREE.SRGBColorSpace
   return tex
 }
@@ -144,6 +105,18 @@ function buildShip(flame: boolean): { group: THREE.Group; flame: THREE.Mesh | nu
   const bell = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.46, 0.5, 20), darkMetal)
   bell.position.y = -1.9
   group.add(bell)
+
+  // Cold-gas RCS blocks, nose and tail quads. Maneuvering is RCS work;
+  // the main bell is for injection burns only.
+  const nozzleGeo = new THREE.BoxGeometry(0.15, 0.15, 0.15)
+  for (const ny of [1.85, -1.45]) {
+    for (let i = 0; i < 4; i++) {
+      const a = (i / 4) * Math.PI * 2 + Math.PI / 4
+      const nozzle = new THREE.Mesh(nozzleGeo, darkMetal)
+      nozzle.position.set(Math.sin(a) * 0.62, ny, Math.cos(a) * 0.62)
+      group.add(nozzle)
+    }
+  }
 
   let flameMesh: THREE.Mesh | null = null
   if (flame) {
@@ -357,10 +330,35 @@ export function GameCanvas() {
       ship.scale.setScalar(1.55)
       scene.add(ship)
 
+      // v1's real ship, tail-sitting as she lands — transforms lifted
+      // from the monolith (scale 1.89, base resting on the ground). The
+      // procedural hull stays as the fallback until the GLB arrives.
+      new GLTFLoader().load('/models/fighter.glb', (gltf) => {
+        const inner = gltf.scene
+        inner.scale.setScalar(1.89)
+        inner.rotation.x = -Math.PI / 2
+        inner.position.y = 4.44
+        inner.traverse((o) => { if (/gear/i.test(o.name)) o.visible = false })
+        const g = new THREE.Group()
+        g.add(inner)
+        g.position.set(-7.5, groundHeight(-7.5, -15), -15)
+        scene.add(g)
+        ship.visible = false
+      }, undefined, () => {})
+
       const pilot = buildPilot()
       pilot.position.set(0.9, 0, 2.4)
       pilot.rotation.y = -0.35
       scene.add(pilot)
+
+      // Sorn, ported from v1 — he keeps near the ship, watching the pilot.
+      let sorn: THREE.Group | null = null
+      new GLTFLoader().load('/models/sorn.glb', (gltf) => {
+        sorn = gltf.scene
+        sorn.scale.setScalar(0.94)
+        sorn.position.set(-4.4, groundHeight(-4.4, -11), -11)
+        scene.add(sorn)
+      }, undefined, () => {})
 
       // Walking: the left stick moves the pilot across the terrain and the
       // camera trails behind. Ground height mirrors the displaced circle
@@ -416,6 +414,14 @@ export function GameCanvas() {
         }
         const bob = moving ? Math.abs(Math.sin(t * 10)) * 0.06 : Math.abs(Math.sin(t * 0.9)) * 0.03
         pilot.position.y = groundHeight(pilot.position.x, pilot.position.z) + bob + hopY
+        if (sorn) {
+          sorn.position.y = groundHeight(sorn.position.x, sorn.position.z) + Math.abs(Math.sin(t * 0.8)) * 0.04
+          const sdx = pilot.position.x - sorn.position.x
+          const sdz = pilot.position.z - sorn.position.z
+          if (Math.hypot(sdx, sdz) < 9) {
+            sorn.rotation.y = angleLerp(sorn.rotation.y, Math.atan2(sdx, sdz), 1 - Math.exp(-dt * 3))
+          }
+        }
         pilot.rotation.z = moving ? Math.sin(t * 10) * 0.045 : 0
         camTarget.set(
           pilot.position.x + Math.sin(camYaw) * 7.5,
@@ -462,16 +468,8 @@ export function GameCanvas() {
       const stars = new THREE.Points(starGeo, new THREE.PointsMaterial({ size: 1.3, sizeAttenuation: false, vertexColors: true, transparent: true, opacity: 0.9 }))
       scene.add(stars)
 
-      // Terrain rushing below, textured per planet.
-      let terrainTex = makeTerrainTexture(useGameStore.getState().currentPlanet)
-      let terrainPlanet = useGameStore.getState().currentPlanet
-      const terrain = new THREE.Mesh(
-        new THREE.PlaneGeometry(260, 380),
-        new THREE.MeshStandardMaterial({ map: terrainTex, roughness: 1, metalness: 0.02 }),
-      )
-      terrain.rotation.x = -Math.PI / 2
-      terrain.position.set(0, -3.4, -150)
-      scene.add(terrain)
+      // No terrain in space. Below the ship is void and stars — the old
+      // scrolling ground plane read as an ocean (Will, 2026-11-26).
 
       // Destination planet, growing as the store's distance closes.
       const planetMat = new THREE.MeshStandardMaterial({ color: PLANET_COLORS[useGameStore.getState().currentPlanet], roughness: 0.85, metalness: 0.05 })
@@ -492,6 +490,41 @@ export function GameCanvas() {
       // Lay the vertical Starship over into flight attitude, nose forward (-Z).
       ship.rotation.x = -Math.PI / 2.25
       scene.add(ship)
+
+      // Propulsion truth (Will, 2026-11-26): steering and avoidance are
+      // cold-gas RCS work — short pale puffs from the nozzle blocks. The
+      // main engine burns only for injection: entering the run and
+      // retargeting to a new world.
+      let burn = 1
+      let burnPlanet = useGameStore.getState().currentPlanet
+      type Puff = { mesh: THREE.Mesh; life: number; dir: THREE.Vector3 }
+      const puffGeo = new THREE.ConeGeometry(0.09, 0.55, 8)
+      const puffs: Puff[] = []
+      for (let i = 0; i < 16; i++) {
+        const m = new THREE.Mesh(
+          puffGeo,
+          new THREE.MeshBasicMaterial({ color: 0xe8f2f8, transparent: true, opacity: 0, depthWrite: false }),
+        )
+        m.visible = false
+        ship.add(m)
+        puffs.push({ mesh: m, life: 0, dir: new THREE.Vector3() })
+      }
+      let puffCooldown = 0
+      const upAxis = new THREE.Vector3(0, 1, 0)
+      const firePuffs = (side: number, vert: number) => {
+        let fired = 0
+        for (const p of puffs) {
+          if (p.life > 0) continue
+          const nose = fired % 2 === 0
+          p.mesh.position.set(side * 0.68, nose ? 1.85 : -1.45, vert * 0.68)
+          p.dir.set(side, 0, vert).normalize()
+          p.mesh.quaternion.setFromUnitVectors(upAxis, p.dir)
+          p.life = 0.26
+          p.mesh.visible = true
+          fired++
+          if (fired >= 2) break
+        }
+      }
 
       const bursts = makeBursts(scene)
 
@@ -713,6 +746,10 @@ export function GameCanvas() {
         const distance = s.distances[s.currentPlanet]
         const closeness = THREE.MathUtils.clamp(1 - distance / 2400, 0, 1)
         const speed = combat ? 25 + closeness * 11 : 4.5
+        // A new destination means a new injection burn.
+        if (s.currentPlanet !== burnPlanet) { burnPlanet = s.currentPlanet; burn = 1 }
+        burn = Math.max(0, burn - dt / 1.6)
+        const spd = speed * (1 + burn * 0.7)
 
         // Virtual sticks: the left stick flies the ship in every direction;
         // the right stick turns (analog) and fires while deflected.
@@ -742,7 +779,27 @@ export function GameCanvas() {
         const vy = dt > 0 ? (ship.position.y - prevY) / dt : 0
         ship.rotation.z = THREE.MathUtils.clamp(-vx * 0.16, -0.85, 0.85)
         ship.rotation.x = -Math.PI / 2.25 + THREE.MathUtils.clamp(vy * 0.05, -0.3, 0.3)
-        if (flame) flame.scale.set(1, 0.82 + Math.sin(t * 31) * 0.16 + Math.random() * 0.07, 1)
+        // Main engine: a low coast flicker that flares only during an
+        // injection burn. Steering never touches it — that is RCS work.
+        if (flame) flame.scale.set(1, 0.4 + burn * 1.9 + Math.sin(t * 31) * 0.08 + Math.random() * 0.04, 1)
+
+        // RCS: lateral/vertical corrections puff from the opposite side.
+        puffCooldown -= dt
+        if (puffCooldown <= 0) {
+          if (vx > 0.7) { firePuffs(-1, 0); puffCooldown = 0.09 }
+          else if (vx < -0.7) { firePuffs(1, 0); puffCooldown = 0.09 }
+          if (vy > 0.7) { firePuffs(0, -1); puffCooldown = 0.09 }
+          else if (vy < -0.7) { firePuffs(0, 1); puffCooldown = 0.09 }
+        }
+        puffs.forEach((p) => {
+          if (p.life <= 0) return
+          p.life -= dt
+          const k = Math.max(0, p.life / 0.26)
+          p.mesh.position.addScaledVector(p.dir, dt * 1.4)
+          p.mesh.scale.set(1 + (1 - k) * 1.6, 1 + (1 - k) * 2.2, 1 + (1 - k) * 1.6)
+          ;(p.mesh.material as THREE.MeshBasicMaterial).opacity = 0.5 * k
+          if (p.life <= 0) p.mesh.visible = false
+        })
         if (!pointerHeld && turn === 0 && !stickDriving && combat) {
           targetX *= Math.exp(-dt * 1.4)
           targetY += (1.6 - targetY) * Math.exp(-dt * 1.4)
@@ -767,21 +824,10 @@ export function GameCanvas() {
         const pos = starGeo.attributes.position as THREE.BufferAttribute
         const arr = pos.array as Float32Array
         for (let i = 0; i < starCount; i++) {
-          arr[i * 3 + 2] += speed * dt * 0.9
+          arr[i * 3 + 2] += spd * dt * 0.9
           if (arr[i * 3 + 2] > 14) arr[i * 3 + 2] -= 460
         }
         pos.needsUpdate = true
-
-        // Terrain scroll + per-planet texture.
-        if (s.currentPlanet !== terrainPlanet) {
-          terrainPlanet = s.currentPlanet
-          const old = terrainTex
-          terrainTex = makeTerrainTexture(terrainPlanet)
-          ;(terrain.material as THREE.MeshStandardMaterial).map = terrainTex
-          ;(terrain.material as THREE.MeshStandardMaterial).needsUpdate = true
-          old.dispose()
-        }
-        terrainTex.offset.y += (speed * dt) / 20
 
         // Destination planet.
         const radius = 2 + 16 * Math.pow(closeness, 2.2)
@@ -804,7 +850,7 @@ export function GameCanvas() {
         }
         rocks.forEach((rock) => {
           if (!rock.active) return
-          rock.mesh.position.z += speed * dt
+          rock.mesh.position.z += spd * dt
           rock.mesh.rotation.x += rock.spin.x * dt
           rock.mesh.rotation.y += rock.spin.y * dt
           rock.mesh.rotation.z += rock.spin.z * dt
@@ -845,7 +891,7 @@ export function GameCanvas() {
         rings.forEach((ring) => {
           if (!ring.active) return
           ring.prevZ = ring.mesh.position.z
-          ring.mesh.position.z += speed * dt
+          ring.mesh.position.z += spd * dt
           ring.mesh.rotation.z = Math.sin(t * 0.8) * 0.08
           const z = ring.mesh.position.z
           if (combat && ring.prevZ < 0 && z >= 0 && !ring.scored) {
@@ -873,7 +919,7 @@ export function GameCanvas() {
         drones.forEach((drone) => {
           if (!drone.active) return
           const p = drone.group.position
-          p.z += speed * dt * 0.86
+          p.z += spd * dt * 0.86
           p.x += (ship.position.x - p.x) * dt * 0.22
           p.y += (ship.position.y - p.y) * dt * 0.22 + Math.sin(t * 2.2 + drone.phase) * dt * 0.5
           drone.group.rotation.y = Math.PI + Math.sin(t * 1.7 + drone.phase) * 0.3
