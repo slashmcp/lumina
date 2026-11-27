@@ -622,16 +622,10 @@ export function GameCanvas() {
       scene.add(camera)
       camera.position.set(26, 9, 38)
 
+      // The Veo blastoff film plays over this scene and owns the
+      // transition to FLIGHT (its onEnded / tap). This 3D sequence is
+      // the understudy — it runs the same beats behind the film.
       let launchT = 0
-      let done = false
-      const finish = () => {
-        if (done) return
-        done = true
-        useGameStore.getState().setMode('FLIGHT')
-      }
-      const onSkip = () => finish()
-      window.addEventListener('pointerdown', onSkip)
-      cleanupFns.push(() => window.removeEventListener('pointerdown', onSkip))
 
       tickScene = (t, dt) => {
         launchT += dt
@@ -656,7 +650,6 @@ export function GameCanvas() {
         camera.position.set(26 - Math.min(12, Math.max(0, T - 2) * 2.4) + shake, 9 + Math.min(20, climb * 0.22), 38)
         camera.lookAt(ship.position.x, ship.position.y + 18 - turn * 8, ship.position.z - turn * 12)
         fadeMat.opacity = THREE.MathUtils.smoothstep(T, 6.6, 7.4)
-        if (T >= 7.45) finish()
       }
     } else {
       // FLIGHT — a Star Fox-style rail run. The course streams at the ship;

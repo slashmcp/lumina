@@ -128,5 +128,6 @@ button:focus-visible, input:focus-visible { outline: 2px solid #65e8ef; outline-
 
 /* Ship interior photography (Gemini stills, 2026-11-26): the deck photo
    backs the whole ship screen; the cockpit photo fills the window. */
-.ship-backdrop { position: absolute; inset: 0; pointer-events: none; background: linear-gradient(180deg, rgba(4,8,11,.62), rgba(4,8,11,.78)), url('/interior-deck.png') center / cover no-repeat; }
+.ship-backdrop { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; pointer-events: none; filter: brightness(.52) saturate(.92); }
 .window-photo { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 30%; }
+.launch-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; background: #000; z-index: 30; }
