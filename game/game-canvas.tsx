@@ -229,6 +229,9 @@ function buildStarship(): THREE.Group {
     g.add(spot)
     g.add(spot.target)
   }
+  // True scale: ~9 units across the base, ~47 tall against a 1.8-unit
+  // pilot — the real 9 m / 50 m proportions. She should dwarf the site.
+  g.scale.setScalar(2)
   return g
 }
 
@@ -435,7 +438,7 @@ export function GameCanvas() {
 
       // The Starship, landed — she towers over the site, as she should.
       const ship = buildStarship()
-      ship.position.set(-13, groundHeight(-13, -24) - 0.1, -24)
+      ship.position.set(-16, groundHeight(-16, -29) - 0.2, -29)
       ship.rotation.y = 0.55
       scene.add(ship)
 
@@ -601,7 +604,7 @@ export function GameCanvas() {
       core.visible = false
       ship.add(core)
       const glowMat = new THREE.MeshBasicMaterial({ color: 0xffc98a, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false })
-      const glowDisc = new THREE.Mesh(new THREE.CircleGeometry(7, 28), glowMat)
+      const glowDisc = new THREE.Mesh(new THREE.CircleGeometry(13, 28), glowMat)
       glowDisc.rotation.x = -Math.PI / 2
       glowDisc.position.y = 0.05
       scene.add(glowDisc)
@@ -611,7 +614,7 @@ export function GameCanvas() {
       fade.position.z = -2
       camera.add(fade)
       scene.add(camera)
-      camera.position.set(13, 4.5, 19)
+      camera.position.set(26, 9, 38)
 
       let launchT = 0
       let done = false
@@ -628,10 +631,10 @@ export function GameCanvas() {
         launchT += dt
         const T = launchT
         const ignite = THREE.MathUtils.smoothstep(T, 0.1, 0.9)
-        const climb = Math.pow(Math.max(0, T - 0.9), 1.6) * 2.2
+        const climb = Math.pow(Math.max(0, T - 0.9), 1.6) * 4.4
         const turn = THREE.MathUtils.smoothstep(T, 2.4, 6.4) * 1.15
         ship.position.y = climb
-        ship.position.z = -Math.pow(Math.max(0, T - 2.4), 2) * 1.35
+        ship.position.z = -Math.pow(Math.max(0, T - 2.4), 2) * 2.7
         ship.rotation.x = -turn
         const meco = T > 6.2 ? Math.max(0, 1 - (T - 6.2) * 2.2) : 1
         const fs = ignite * meco
@@ -642,10 +645,10 @@ export function GameCanvas() {
         flame.position.y = 2.3 - 4.5 * flame.scale.y
         core.scale.set(0.8 + fs * 0.3, Math.max(0.001, fs * flick), 0.8 + fs * 0.3)
         core.position.y = 2.3 - 2.75 * core.scale.y
-        glowMat.opacity = 0.5 * ignite * Math.max(0, 1 - climb / 26)
+        glowMat.opacity = 0.5 * ignite * Math.max(0, 1 - climb / 52)
         const shake = T > 0.1 && T < 2.8 ? (Math.random() - 0.5) * 0.07 * ignite : 0
-        camera.position.set(13 - Math.min(6, Math.max(0, T - 2) * 1.2) + shake, 4.5 + Math.min(10, climb * 0.22), 19)
-        camera.lookAt(ship.position.x, ship.position.y + 9 - turn * 4, ship.position.z - turn * 6)
+        camera.position.set(26 - Math.min(12, Math.max(0, T - 2) * 2.4) + shake, 9 + Math.min(20, climb * 0.22), 38)
+        camera.lookAt(ship.position.x, ship.position.y + 18 - turn * 8, ship.position.z - turn * 12)
         fadeMat.opacity = THREE.MathUtils.smoothstep(T, 6.6, 7.4)
         if (T >= 7.45) finish()
       }
