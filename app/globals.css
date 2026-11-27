@@ -146,3 +146,4 @@ button:focus-visible, input:focus-visible { outline: 2px solid #65e8ef; outline-
   .mode-surface .action-button { min-height: 44px; padding: 6px 8px; background: rgba(9,14,19,.55); }
   .mode-surface .action-button small { display: none; }
 }
+.land-button small { margin-left: 8px; }

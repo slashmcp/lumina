@@ -206,11 +206,12 @@ export function StarlanceGame() {
       <Stick side="left" input={flightInput.stickL} />
     </>}
 
-    {mode === 'LAUNCH' && <video className="launch-video" src="/blastoff.mp4" autoPlay muted playsInline onEnded={() => setMode('FLIGHT')} onClick={() => setMode('FLIGHT')} onError={() => setMode('FLIGHT')} />}
+    {mode === 'LAUNCH' && <video className="launch-video" src="/blastoff.mp4" preload="auto" autoPlay muted playsInline onEnded={() => setMode('FLIGHT')} onClick={() => setMode('FLIGHT')} onError={() => setMode('FLIGHT')} />}
 
     {mode === 'SHIP' && <>
-      <header className="flight-header ship-header"><div className="brand-chip"><span className="brand-mark">S</span><div><strong>THE WAYFARER</strong><small>SHIP SYSTEMS <i /> ONLINE</small></div></div><button className="icon-button" aria-label="Open Pip chat" onClick={() => setPipOpen(true)}><MessageCircle size={18} /></button></header>
+      <header className="flight-header ship-header"><div className="brand-chip"><span className="brand-mark">S</span><div><strong>THE WAYFARER</strong><small>SHIP SYSTEMS <i /> ONLINE</small></div></div></header>
       <video className="ship-backdrop" src="/interior-cockpit.mp4" poster="/interior-cockpit.png" autoPlay loop muted playsInline />
+      <video src="/blastoff.mp4" preload="auto" muted playsInline style={{ display: 'none' }} aria-hidden="true" />
       <section className="ship-interior"><div className="section-kicker"><span /> CARGO & SYSTEMS</div><h2>Ship status</h2>
         <div className="cargo-grid"><Metric label="ROCK" value={rock} icon={Mountain} /><Metric label="CRYSTAL" value={crystal} icon={Gem} /><Metric label="FUEL" value={Math.ceil(fuel)} unit="%" icon={Fuel} /><Metric label="SHIELD" value={shield} unit="%" icon={Shield} /></div>
         <div className="hold-summary"><span>HOLD VALUE</span><strong>¢{holdValue.toLocaleString()}</strong><small>{rock + crystal} UNITS CARGO</small></div>
